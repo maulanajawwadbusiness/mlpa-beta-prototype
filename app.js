@@ -849,6 +849,7 @@
 
     updateCanvasTransform() {
       if (this.worldLayer) {
+        console.log('[Flow Transform] Updating transform:', state.canvasState.pan);
         this.worldLayer.style.transform = `translate(${state.canvasState.pan.x}px, ${state.canvasState.pan.y}px)`;
       }
     },
@@ -877,15 +878,23 @@
       if (!this.boxesContainer) return;
       this.boxesContainer.innerHTML = '';
 
+      console.log('[Flow Render] Current pan state:', state.canvasState.pan);
+      console.log('[Flow Render] World transform:', this.worldLayer?.style.transform);
+
       state.canvasState.scales.forEach((scale) => {
         // Initial positioning logic (optical vertical centering)
         if (scale.parent_scale_id === null && !scale.__positionInitialized && this.canvas) {
           const canvasHeight = this.canvas.clientHeight || window.innerHeight;
           const estimatedBoxHeight = 120; // Collapsed height
+          console.trace('[POSITION WRITE] Auto-positioning root scale:', scale.scale_id);
           scale.position.y = (canvasHeight - estimatedBoxHeight) * 0.5;
           scale.__positionInitialized = true;
+          console.log('[Flow Render] Auto-positioned root scale:', scale.scale_id, scale.position);
+        } else if (scale.parent_scale_id !== null) {
+          console.log('[Flow Render] Skipping auto-position for branched scale:', scale.scale_id, 'parent:', scale.parent_scale_id);
         }
 
+        console.log('[Flow Render] Rendering scale:', scale.scale_id, 'at position:', scale.position);
         const flowBoxHtml = this.createFlowBoxHtml(scale);
         this.boxesContainer.insertAdjacentHTML('beforeend', flowBoxHtml);
       });
@@ -1259,6 +1268,37 @@
       if (input) input.value = '';
     },
 
+    // Deterministic child-row positioning for branched scales
+    getNextBranchPosition(sourceScaleId) {
+      const HORIZONTAL_GAP = 450;     // Gap between parent and child column
+      const VERTICAL_GAP = 24;        // Gap between sibling scales
+      const ESTIMATED_HEIGHT = 180;   // Fixed estimated flowbox height
+      const ROW_HEIGHT = ESTIMATED_HEIGHT + VERTICAL_GAP;
+
+      const source = state.canvasState.scales.get(sourceScaleId);
+      if (!source) return { x: 100, y: 100, branch_index: 0 };
+
+      // Count existing branches of this parent to determine next branch_index
+      const existingBranches = Array.from(state.canvasState.scales.values())
+        .filter(s => s.parent_scale_id === sourceScaleId);
+
+      const branch_index = existingBranches.length;
+
+      const baseX = source.position.x + HORIZONTAL_GAP;
+      const baseY = source.position.y + (branch_index * ROW_HEIGHT);
+
+      console.log('[Branch Position] Parent:', sourceScaleId);
+      console.log('[Branch Position] Existing branches:', existingBranches.length);
+      console.log('[Branch Position] New branch_index:', branch_index);
+      console.log('[Branch Position] Computed position:', { x: baseX, y: baseY });
+
+      return {
+        x: baseX,
+        y: baseY,
+        branch_index: branch_index
+      };
+    },
+
     async handleBranchingSubmit() {
       // Get input
       const input = document.getElementById('branching-input');
@@ -1271,43 +1311,99 @@
       }
 
       // Get source scale
-      const scaleId = state.canvasState.branchingFromScaleId;
-      const scale = state.canvasState.scales.get(scaleId);
-      const scaleName = scale?.scale_name || scaleId || 'Unknown Scale';
+      const sourceScaleId = state.canvasState.branchingFromScaleId;
+      const sourceScale = state.canvasState.scales.get(sourceScaleId);
 
-      // Build prompt
-      const prompt = `You are a psychometric scale adaptation assistant.
-
-Source Scale: "${scaleName}"
-Adaptation Request: "${adaptationIntent}"
-
-For now, just acknowledge the request and describe what kind of adaptation would be needed. Do not generate actual items yet.`;
-
-      console.log('[MLPA Branching] === PROMPT SENT TO GPT ===');
-      console.log(prompt);
-      console.log('[MLPA Branching] ========================');
-
-      // Check if API is configured
-      if (typeof OpenAIAPI === 'undefined' || !OpenAIAPI.isConfigured()) {
-        console.warn('[MLPA Branching] OpenAI API not configured. Simulating response.');
-        console.log('[MLPA Branching] === GPT RESPONSE (SIMULATED) ===');
-        console.log(`[Simulated] I understand you want to adapt "${scaleName}" for: ${adaptationIntent}. API key required for real response.`);
-        console.log('[MLPA Branching] ================================');
+      if (!sourceScale) {
+        console.error('[MLPA Branching] Source scale not found');
         return;
       }
 
-      // Call GPT API
-      try {
-        console.log('[MLPA Branching] Calling GPT API...');
-        const response = await OpenAIAPI.ask(prompt);
+      console.log('[MLPA Branching] Creating mock branched scale...');
+      console.log('[MLPA Branching] Source:', sourceScale.scale_name);
+      console.log('[MLPA Branching] Intent:', adaptationIntent);
 
-        console.log('[MLPA Branching] === GPT RESPONSE (RAW) ===');
-        console.log(response);
-        console.log('[MLPA Branching] ===========================');
+      // Generate unique branch ID
+      const branchCount = Array.from(state.canvasState.scales.keys())
+        .filter(id => id.startsWith(sourceScaleId + '-branch')).length + 1;
+      const newScaleId = `${sourceScaleId}-branch-${branchCount}`;
 
-      } catch (error) {
-        console.error('[MLPA Branching] GPT API call failed:', error);
-      }
+      // Compute layout-aware position
+      const newPosition = this.getNextBranchPosition(sourceScaleId);
+      console.log('[MLPA Branching] Computed position:', newPosition);
+      console.log('[MLPA Branching] Source position:', sourceScale.position);
+
+      console.trace('[POSITION WRITE] Creating branched scale with position:', newPosition);
+
+      // Create hardcoded mock scale (structural stub - no AI)
+      const mockBranchedScale = {
+        scale_id: newScaleId,
+        scale_name: `Skala Cabang (Mock ${branchCount})`,
+        parent_scale_id: sourceScaleId,
+        is_root: false,
+        expanded: false,
+        branch_index: newPosition.branch_index,
+        position: { x: newPosition.x, y: newPosition.y },
+        dimensions: [
+          {
+            name: 'Dimensi Stub A',
+            items: [
+              {
+                item_id: `${newScaleId}-item-1`,
+                origin_item_id: '1',
+                text: 'Item stub pertama untuk testing render',
+                baseline_rubric: ['Trait A', 'Trait B', 'Perspektif Pertama'],
+                current_rubric: ['Trait A', 'Trait B', 'Perspektif Pertama'],
+                dimension: 'Dimensi Stub A'
+              },
+              {
+                item_id: `${newScaleId}-item-2`,
+                origin_item_id: '2',
+                text: 'Item stub kedua dengan rubrik lengkap',
+                baseline_rubric: ['Trait C', 'Trait D', 'Pengalaman'],
+                current_rubric: ['Trait C', 'Trait D', 'Pengalaman'],
+                dimension: 'Dimensi Stub A'
+              }
+            ]
+          },
+          {
+            name: 'Dimensi Stub B',
+            items: [
+              {
+                item_id: `${newScaleId}-item-3`,
+                origin_item_id: '3',
+                text: 'Item stub ketiga di dimensi berbeda',
+                baseline_rubric: ['Trait E', 'Trait F', 'Kemampuan'],
+                current_rubric: ['Trait E', 'Trait F', 'Kemampuan'],
+                dimension: 'Dimensi Stub B'
+              },
+              {
+                item_id: `${newScaleId}-item-4`,
+                origin_item_id: '4',
+                text: 'Item stub keempat sebagai penutup',
+                baseline_rubric: ['Trait G', 'Trait H', 'Evaluasi Diri'],
+                current_rubric: ['Trait G', 'Trait H', 'Evaluasi Diri'],
+                dimension: 'Dimensi Stub B'
+              }
+            ]
+          }
+        ]
+      };
+
+      // Add to canvas state
+      state.canvasState.scales.set(newScaleId, mockBranchedScale);
+      console.log('[MLPA Branching] Added scale to state:', newScaleId);
+      console.log('[MLPA Branching] Scale position in state:', mockBranchedScale.position);
+
+
+      // Close popup and clear input
+      this.closeBranchingPopup();
+
+      // Re-render canvas
+      this.renderAll();
+      console.log('[MLPA Branching] Canvas re-rendered');
+
+      console.log('[MLPA Branching] ✓ Mock branch created successfully');
     },
 
     exportScale(scaleId) {
