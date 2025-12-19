@@ -804,6 +804,12 @@
         branchCloseBtn.addEventListener('click', () => this.closeBranchingPopup());
       }
 
+      // Bind branching submit button
+      const branchSubmitBtn = document.getElementById('branching-submit');
+      if (branchSubmitBtn) {
+        branchSubmitBtn.addEventListener('click', () => this.handleBranchingSubmit());
+      }
+
       // Bind global export
       const exportBtn = document.getElementById('global-export-btn');
       if (exportBtn) {
@@ -1232,7 +1238,18 @@
     openBranchingPopup(scaleId) {
       state.canvasState.branchingFromScaleId = scaleId;
       const popup = document.getElementById('branching-popup');
-      popup?.classList.remove('hidden');
+      if (!popup) return;
+
+      // Find the flow box and position popup anchored to it
+      const flowBox = document.querySelector(`.flow-box[data-scale-id="${scaleId}"]`);
+      if (flowBox) {
+        const rect = flowBox.getBoundingClientRect();
+        popup.style.left = `${rect.right + 16}px`;
+        popup.style.top = `${rect.top + (rect.height / 2)}px`;
+        popup.style.transform = 'translateY(-50%)';
+      }
+
+      popup.classList.remove('hidden');
     },
 
     closeBranchingPopup() {
@@ -1240,6 +1257,57 @@
       popup?.classList.add('hidden');
       const input = document.getElementById('branching-input');
       if (input) input.value = '';
+    },
+
+    async handleBranchingSubmit() {
+      // Get input
+      const input = document.getElementById('branching-input');
+      const adaptationIntent = input?.value?.trim();
+
+      // Guard: empty input
+      if (!adaptationIntent) {
+        console.log('[MLPA Branching] Empty input - doing nothing');
+        return;
+      }
+
+      // Get source scale
+      const scaleId = state.canvasState.branchingFromScaleId;
+      const scale = state.canvasState.scales.get(scaleId);
+      const scaleName = scale?.scale_name || scaleId || 'Unknown Scale';
+
+      // Build prompt
+      const prompt = `You are a psychometric scale adaptation assistant.
+
+Source Scale: "${scaleName}"
+Adaptation Request: "${adaptationIntent}"
+
+For now, just acknowledge the request and describe what kind of adaptation would be needed. Do not generate actual items yet.`;
+
+      console.log('[MLPA Branching] === PROMPT SENT TO GPT ===');
+      console.log(prompt);
+      console.log('[MLPA Branching] ========================');
+
+      // Check if API is configured
+      if (typeof OpenAIAPI === 'undefined' || !OpenAIAPI.isConfigured()) {
+        console.warn('[MLPA Branching] OpenAI API not configured. Simulating response.');
+        console.log('[MLPA Branching] === GPT RESPONSE (SIMULATED) ===');
+        console.log(`[Simulated] I understand you want to adapt "${scaleName}" for: ${adaptationIntent}. API key required for real response.`);
+        console.log('[MLPA Branching] ================================');
+        return;
+      }
+
+      // Call GPT API
+      try {
+        console.log('[MLPA Branching] Calling GPT API...');
+        const response = await OpenAIAPI.ask(prompt);
+
+        console.log('[MLPA Branching] === GPT RESPONSE (RAW) ===');
+        console.log(response);
+        console.log('[MLPA Branching] ===========================');
+
+      } catch (error) {
+        console.error('[MLPA Branching] GPT API call failed:', error);
+      }
     },
 
     exportScale(scaleId) {

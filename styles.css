@@ -1263,6 +1263,7 @@ body.is-fullscreen .fullscreen-btn .icon-compress {
   max-height: 0;
   padding: 0 16px;
   opacity: 0;
+  pointer-events: none;
 }
 
 /* Hover Tools */
@@ -1525,16 +1526,14 @@ body.is-fullscreen .fullscreen-btn .icon-compress {
 
 /* Branching Popup */
 .branching-popup {
-  position: absolute;
-  bottom: var(--space-min);
-  right: var(--space-min);
+  position: fixed;
   width: 360px;
   background: var(--color-bg);
   border: 1px solid var(--color-border);
   border-radius: var(--border-radius);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
   z-index: 100;
-  transition: opacity var(--transition-fast), transform var(--transition-fast);
+  transition: opacity var(--transition-fast);
 }
 
 .branching-popup.hidden {
