@@ -824,9 +824,12 @@
 
     createFlowBoxHtml(scale) {
       let globalItemIndex = 1;
-      const dimensionsHtml = scale.dimensions.map((dim, index) => {
-        const html = this.createDimensionHtml(dim, index + 1, globalItemIndex);
-        globalItemIndex += dim.items.length;
+      const dimensions = Array.isArray(scale.dimensions) ? scale.dimensions : [];
+      const dimensionsHtml = dimensions.map((dim, index) => {
+        const safeDimension = dim && typeof dim === 'object' ? dim : {};
+        const items = Array.isArray(safeDimension.items) ? safeDimension.items : [];
+        const html = this.createDimensionHtml({ ...safeDimension, items }, index + 1, globalItemIndex);
+        globalItemIndex += items.length;
         return html;
       }).join('');
 
@@ -864,13 +867,16 @@
     },
 
     createDimensionHtml(dimension, index, startItemIndex) {
-      const itemsHtml = dimension.items.map((item, idx) => this.createItemHtml(item, startItemIndex + idx)).join('');
+      const safeDimension = dimension && typeof dimension === 'object' ? dimension : {};
+      const items = Array.isArray(safeDimension.items) ? safeDimension.items : [];
+      const itemsHtml = items.map((item, idx) => this.createItemHtml(item, startItemIndex + idx)).join('');
+      const dimensionName = typeof safeDimension.name === 'string' ? safeDimension.name : '';
 
       return `
         <div class="dimension-box">
           <div class="dimension-label">
             <span class="dimension-label-line">Dimensi ${index}</span>
-            <span class="dimension-label-line">${dimension.name}</span>
+            <span class="dimension-label-line">${dimensionName}</span>
           </div>
           <div class="dimension-items">
             ${itemsHtml}
@@ -880,12 +886,15 @@
     },
 
     createItemHtml(item, itemIndex) {
-      const integrityClass = this.getIntegrityClass(item);
-      const rubricHtml = this.createRubricPopupHtml(item);
+      const safeItem = item && typeof item === 'object' ? item : {};
+      const integrityClass = this.getIntegrityClass(safeItem);
+      const rubricHtml = this.createRubricPopupHtml(safeItem);
+      const itemId = safeItem.item_id ?? '';
+      const itemText = safeItem.text ?? '';
 
       return `
-        <div class="item-box ${integrityClass}" data-item-id="${item.item_id}">
-          <span class="item-text">i${itemIndex}: ${item.text}</span>
+        <div class="item-box ${integrityClass}" data-item-id="${itemId}">
+          <span class="item-text">i${itemIndex}: ${itemText}</span>
           ${rubricHtml}
           <div class="item-edit-controls">
             <textarea class="item-edit-input"></textarea>
