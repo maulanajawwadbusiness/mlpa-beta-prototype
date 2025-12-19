@@ -994,7 +994,7 @@
           const flowBox = e.target.closest('.flow-box');
           const scaleId = flowBox.dataset.scaleId;
           console.log('[export-btn] clicked, scaleId:', scaleId);
-          this.exportScale(scaleId);
+          this.exportScaleCSV(scaleId);
           return false;
         });
       });
@@ -1065,7 +1065,8 @@
       if (input) input.value = '';
     },
 
-    exportScale(scaleId) {
+    exportScaleInternal(scaleId) {
+      console.trace('[exportScaleInternal] CALLED');
       const scale = state.canvasState.scales.get(scaleId);
       if (!scale) return;
 
@@ -1089,6 +1090,7 @@
     },
 
     exportAllScales() {
+      console.trace('[exportAllScales] CALLED');
       const rows = [['scale_id', 'scale_name', 'parent_scale_id', 'dimension_name', 'item_id', 'origin_item_id', 'item_text', 'baseline_rubric', 'current_rubric']];
 
       state.canvasState.scales.forEach(scale => {
@@ -1112,8 +1114,9 @@
       this.downloadCSV(rows, 'MLPA_All_Scales.csv');
     },
 
-    exportScale(scaleId) {
-      console.log('[exportScale] called', scaleId);
+    exportScaleCSV(scaleId) {
+      alert('[exportScaleCSV] Function called with scaleId: ' + scaleId);
+      console.log('[exportScaleCSV] called', scaleId);
 
       // Get scale data
       const scale = state.canvasState.scales.get(scaleId);
@@ -1139,18 +1142,43 @@
         });
       });
 
+
       // Convert to CSV
       const csvContent = this.convertToCSV(allItems, ['item_id', 'dimension', 'item_text']);
+      console.log('[1] csvContent:', csvContent);
+      console.log('[1] csvContent type:', typeof csvContent);
+      console.log('[1] csvContent length:', csvContent.length);
 
       // Generate filename
       const filename = `${this.sanitizeFilename(scale.scale_name || 'scale')}.csv`;
+      console.log('[2] filename:', filename);
 
-      // Trigger download
+      // Navigate to CSV instead of downloading
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      console.log('[3] blob:', blob);
+      console.log('[3] blob.size:', blob.size);
+      console.log('[3] blob.type:', blob.type);
+
+      const url = URL.createObjectURL(blob);
+      console.log('[4] url:', url);
+
+      // Create download link (ORIGINAL METHOD)
+      console.log('[5] Creating <a> element...');
       const link = document.createElement('a');
-      link.href = URL.createObjectURL(blob);
+      console.log('[5] link element:', link);
+
+      link.href = url;
+      console.log('[6] link.href set to:', link.href);
+
       link.download = filename;
+      console.log('[7] link.download set to:', link.download);
+
+      console.log('[8] About to click link...');
       link.click();
+      console.log('[9] After link.click() - download should have triggered');
+
+      console.log('I OPEN CSV');
+
     },
 
     convertToCSV(data, columns) {
@@ -1183,6 +1211,7 @@
     },
 
     downloadCSV(rows, filename) {
+      console.trace('[downloadCSV] CALLED with filename:', filename);
       const csvContent = rows.map(row =>
         row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')
       ).join('\n');
