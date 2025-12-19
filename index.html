@@ -184,12 +184,15 @@
 
         <!-- Flow Canvas (Pannable) -->
         <div id="flow-canvas" class="flow-canvas">
-          <!-- SVG Layer for Connection Lines -->
-          <svg id="flow-connections" class="flow-connections"></svg>
+          <!-- World Layer (receives transform for panning) -->
+          <div id="flow-world" class="flow-world">
+            <!-- SVG Layer for Connection Lines -->
+            <svg id="flow-connections" class="flow-connections"></svg>
 
-          <!-- Flow Boxes Container -->
-          <div id="flow-boxes" class="flow-boxes">
-            <!-- Flow boxes will be rendered here dynamically -->
+            <!-- Flow Boxes Container -->
+            <div id="flow-boxes" class="flow-boxes">
+              <!-- Flow boxes will be rendered here dynamically -->
+            </div>
           </div>
         </div>
 

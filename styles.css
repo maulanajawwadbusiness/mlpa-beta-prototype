@@ -1098,7 +1098,6 @@ body.is-fullscreen .fullscreen-btn .icon-compress {
 /* ==================== */
 
 .flow-screen {
-  position: relative;
   overflow: hidden;
 }
 
@@ -1134,10 +1133,14 @@ body.is-fullscreen .fullscreen-btn .icon-compress {
 
 /* Flow Canvas */
 .flow-canvas {
-  position: absolute;
-  inset: 0;
-  overflow: hidden;
+  /* The single positioned ancestor for flow-box absolute positioning */
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow-x: hidden;
+  overflow-y: hidden;
   cursor: grab;
+  transform-origin: 0 0;
   background:
     radial-gradient(circle at 1px 1px, rgba(0, 0, 0, 0.03) 1px, transparent 1px);
   background-size: 24px 24px;
@@ -1147,6 +1150,16 @@ body.is-fullscreen .fullscreen-btn .icon-compress {
   cursor: grabbing;
 }
 
+/* Flow World Layer (receives pan transform) */
+.flow-world {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  transform-origin: 0 0;
+}
+
 /* SVG Connections Layer */
 .flow-connections {
   position: absolute;
@@ -1154,7 +1167,7 @@ body.is-fullscreen .fullscreen-btn .icon-compress {
   width: 100%;
   height: 100%;
   pointer-events: none;
-  z-index: 1;
+  z-index: 0;
 }
 
 .flow-connection-line {
@@ -1165,14 +1178,16 @@ body.is-fullscreen .fullscreen-btn .icon-compress {
 
 /* Flow Boxes Container */
 .flow-boxes {
-  position: absolute;
-  inset: 0;
-  z-index: 2;
+  position: relative;
+  width: 100%;
+  height: auto;
 }
 
 /* Flow Box (Scale Container) */
 .flow-box {
+  pointer-events: auto;
   position: absolute;
+  z-index: 1;
   min-width: 320px;
   max-width: 480px;
   background: var(--color-bg);
@@ -1180,6 +1195,21 @@ body.is-fullscreen .fullscreen-btn .icon-compress {
   border-radius: var(--border-radius);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
   transition: box-shadow var(--transition-fast);
+  font-size: 12.5px;
+  line-height: 1.35;
+  letter-spacing: -0.01em;
+  height: auto;
+  overflow: visible;
+}
+
+/* Specificity Override for Inner Content */
+.flow-box .question-item,
+.flow-box .scale-item,
+.flow-box .statement-card,
+.flow-box p {
+  font-size: 12.5px !important;
+  line-height: 1.35 !important;
+  letter-spacing: -0.01em;
 }
 
 .flow-box:hover {
@@ -1191,8 +1221,10 @@ body.is-fullscreen .fullscreen-btn .icon-compress {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 20px;
+  padding: 12px 30px;
   border-bottom: 1px solid var(--color-border);
+  font-size: 13.5px;
+  font-weight: 600;
   cursor: pointer;
 }
 
@@ -1207,10 +1239,11 @@ body.is-fullscreen .fullscreen-btn .icon-compress {
   height: 20px;
   color: var(--color-text-muted);
   transition: transform var(--transition-base);
+  transform: rotate(90deg);
 }
 
-.flow-box.collapsed .flow-box-toggle {
-  transform: rotate(-90deg);
+.flow-box.flow-mode-collapsed .flow-box-toggle {
+  transform: rotate(0deg);
 }
 
 /* Flow Box Content */
@@ -1220,11 +1253,13 @@ body.is-fullscreen .fullscreen-btn .icon-compress {
   flex-direction: column;
   gap: 12px;
   overflow: hidden;
-  max-height: 600px;
+  max-height: none;
   transition: max-height var(--transition-smooth), padding var(--transition-smooth), opacity var(--transition-fast);
+  font-size: 12.5px;
+  line-height: 1.4;
 }
 
-.flow-box.collapsed .flow-box-content {
+.flow-box.flow-mode-collapsed .flow-box-content {
   max-height: 0;
   padding: 0 16px;
   opacity: 0;
@@ -1291,9 +1326,10 @@ body.is-fullscreen .fullscreen-btn .icon-compress {
 /* Dimension Box */
 .dimension-box {
   position: relative;
-  padding: 12px 12px 12px 32px;
+  padding: 12px 12px 12px 64px;
   background: var(--color-surface-hover);
   border-radius: var(--border-radius-sm);
+  overflow: visible;
 }
 
 .dimension-label {
@@ -1301,37 +1337,38 @@ body.is-fullscreen .fullscreen-btn .icon-compress {
   left: 0;
   top: 0;
   bottom: 0;
-  width: 24px;
+  width: 56px;
+  padding: 20px;
   display: flex;
-  align-items: center;
+  flex-direction: row;
   justify-content: center;
+  align-items: center;
+  gap: 2px;
   background: rgba(0, 0, 0, 0.04);
   border-radius: var(--border-radius-sm) 0 0 var(--border-radius-sm);
 }
 
-.dimension-label-text {
+.dimension-label-line {
   writing-mode: vertical-rl;
-  text-orientation: mixed;
   transform: rotate(180deg);
-  font-size: var(--font-size-xs);
+  font-size: 0.72em;
   font-weight: var(--font-weight-medium);
   color: var(--color-text-muted);
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-height: 200px;
+  line-height: 1.05;
 }
 
 .dimension-items {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+  overflow: hidden;
 }
 
 /* Item Box */
 .item-box {
   position: relative;
-  padding: 10px 14px;
+  padding: 8px 10px;
   background: var(--color-bg);
   border: 1px solid var(--color-border);
   border-radius: 6px;
@@ -1563,4 +1600,15 @@ body.is-fullscreen .fullscreen-btn .icon-compress {
 
 .branching-submit:hover {
   background: #2a2a2a;
+}
+
+/* Flow Mode Boundary (System Map Style) */
+.flow-mode {
+  font-size: 12.5px;
+  line-height: 1.35;
+}
+
+.flow-mode * {
+  font-size: inherit !important;
+  line-height: inherit !important;
 }

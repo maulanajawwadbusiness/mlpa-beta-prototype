@@ -667,7 +667,7 @@
       scale_name: 'Skala Asli',
       parent_scale_id: null,
       is_root: true,
-      expanded: true,
+      expanded: false,
       position: { x: 100, y: 100 },
       dimensions: dimensions
     };
@@ -704,7 +704,7 @@
 
   // ==================== FLOW EDITOR (Screen 3) ====================
 
-  const DEBUG_FLOW_EDITOR = true; // Set to false to hide debug info
+  const DEBUG_FLOW_EDITOR = false; // Set to false to hide debug info
 
   const flowEditor = {
     canvas: null,
@@ -716,6 +716,7 @@
 
     init() {
       this.canvas = document.getElementById('flow-canvas');
+      this.worldLayer = document.getElementById('flow-world');
       this.boxesContainer = document.getElementById('flow-boxes');
       this.connectionsLayer = document.getElementById('flow-connections');
 
@@ -767,12 +768,29 @@
     },
 
     updateCanvasTransform() {
-      if (this.boxesContainer) {
-        this.boxesContainer.style.transform = `translate(${state.canvasState.pan.x}px, ${state.canvasState.pan.y}px)`;
+      if (this.worldLayer) {
+        this.worldLayer.style.transform = `translate(${state.canvasState.pan.x}px, ${state.canvasState.pan.y}px)`;
       }
-      if (this.connectionsLayer) {
-        this.connectionsLayer.style.transform = `translate(${state.canvasState.pan.x}px, ${state.canvasState.pan.y}px)`;
-      }
+    },
+
+    updateCanvasBounds() {
+      if (!this.boxesContainer) return;
+
+      let maxBottom = 0;
+
+      document.querySelectorAll('.flow-box').forEach(box => {
+        const bottom = box.offsetTop + box.offsetHeight;
+        if (bottom > maxBottom) maxBottom = bottom;
+      });
+
+      // Add padding buffer (100px)
+      const requiredHeight = maxBottom + 100;
+
+      // Ensure minimum height matches viewport
+      const minHeight = this.canvas ? this.canvas.clientHeight : window.innerHeight;
+      const finalHeight = Math.max(requiredHeight, minHeight);
+
+      this.boxesContainer.style.height = `${finalHeight}px`;
     },
 
     renderAll() {
@@ -780,6 +798,14 @@
       this.boxesContainer.innerHTML = '';
 
       state.canvasState.scales.forEach((scale) => {
+        // Initial positioning logic (optical vertical centering)
+        if (scale.parent_scale_id === null && !scale.__positionInitialized && this.canvas) {
+          const canvasHeight = this.canvas.clientHeight || window.innerHeight;
+          const estimatedBoxHeight = 120; // Collapsed height
+          scale.position.y = (canvasHeight - estimatedBoxHeight) * 0.5;
+          scale.__positionInitialized = true;
+        }
+
         const flowBoxHtml = this.createFlowBoxHtml(scale);
         this.boxesContainer.insertAdjacentHTML('beforeend', flowBoxHtml);
       });
@@ -791,13 +817,21 @@
       if (DEBUG_FLOW_EDITOR) {
         this.updateDebugPanel();
       }
+
+      // Update virtual canvas bounds
+      this.updateCanvasBounds();
     },
 
     createFlowBoxHtml(scale) {
-      const dimensionsHtml = scale.dimensions.map(dim => this.createDimensionHtml(dim)).join('');
+      let globalItemIndex = 1;
+      const dimensionsHtml = scale.dimensions.map((dim, index) => {
+        const html = this.createDimensionHtml(dim, index + 1, globalItemIndex);
+        globalItemIndex += dim.items.length;
+        return html;
+      }).join('');
 
       return `
-        <div class="flow-box ${scale.expanded ? '' : 'collapsed'}" 
+        <div class="flow-box flow-mode ${scale.expanded ? '' : 'flow-mode-collapsed'}"  
              data-scale-id="${scale.scale_id}" 
              style="left: ${scale.position.x}px; top: ${scale.position.y}px;">
           <!-- Hover Tools -->
@@ -829,13 +863,14 @@
       `;
     },
 
-    createDimensionHtml(dimension) {
-      const itemsHtml = dimension.items.map(item => this.createItemHtml(item)).join('');
+    createDimensionHtml(dimension, index, startItemIndex) {
+      const itemsHtml = dimension.items.map((item, idx) => this.createItemHtml(item, startItemIndex + idx)).join('');
 
       return `
         <div class="dimension-box">
           <div class="dimension-label">
-            <span class="dimension-label-text">${dimension.name}</span>
+            <span class="dimension-label-line">Dimensi ${index}</span>
+            <span class="dimension-label-line">${dimension.name}</span>
           </div>
           <div class="dimension-items">
             ${itemsHtml}
@@ -844,13 +879,13 @@
       `;
     },
 
-    createItemHtml(item) {
+    createItemHtml(item, itemIndex) {
       const integrityClass = this.getIntegrityClass(item);
       const rubricHtml = this.createRubricPopupHtml(item);
 
       return `
         <div class="item-box ${integrityClass}" data-item-id="${item.item_id}">
-          <span class="item-text">${item.text}</span>
+          <span class="item-text">i${itemIndex}: ${item.text}</span>
           ${rubricHtml}
           <div class="item-edit-controls">
             <textarea class="item-edit-input"></textarea>
@@ -912,7 +947,10 @@
           const scale = state.canvasState.scales.get(scaleId);
           if (scale) {
             scale.expanded = !scale.expanded;
-            flowBox.classList.toggle('collapsed', !scale.expanded);
+            flowBox.classList.toggle('flow-mode-collapsed', !scale.expanded);
+
+            // Update canvas bounds after animation completes
+            setTimeout(() => this.updateCanvasBounds(), 350);
           }
         });
       });
