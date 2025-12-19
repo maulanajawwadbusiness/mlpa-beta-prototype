@@ -1,7 +1,7 @@
 # MLPA Prototype Technical Documentation
 
 ## 1. Project Overview
-The **MLPA (Multidimensional Likert Psychometric Assessment)** prototype is a web-based tool designed for psychometric scale management. It allows users to upload CSV data, visualize psychometric scales, run assessments, and edit/adapt scales using a node-based flow interface.
+The **MLPA (Multi-Level Profiling Assessment)** prototype is a web-based tool designed for psychometric scale management. It allows users to upload CSV data, visualize psychometric scales, run assessments, and edit/adapt scales using a node-based flow interface.
 
 **Target Audience:** Psychometricians and researchers.
 **Key Focus:** Clean, Apple-like minimal UI, responsive flow editing, and AI-assisted scale adaptation (GPT-5.2 ready).
