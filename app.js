@@ -988,10 +988,14 @@
       // Per-scale export
       document.querySelectorAll('.flow-box-tools .export-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
+          e.preventDefault();
           e.stopPropagation();
+          e.stopImmediatePropagation();
           const flowBox = e.target.closest('.flow-box');
           const scaleId = flowBox.dataset.scaleId;
+          console.log('[export-btn] clicked, scaleId:', scaleId);
           this.exportScale(scaleId);
+          return false;
         });
       });
 
@@ -1106,6 +1110,76 @@
       });
 
       this.downloadCSV(rows, 'MLPA_All_Scales.csv');
+    },
+
+    exportScale(scaleId) {
+      console.log('[exportScale] called', scaleId);
+
+      // Get scale data
+      const scale = state.canvasState.scales.get(scaleId);
+      if (!scale) {
+        console.error('Scale not found:', scaleId);
+        return;
+      }
+
+      // Flatten all items from all dimensions
+      const allItems = [];
+      let itemCounter = 1;
+
+      (scale.dimensions || []).forEach(dimension => {
+        const dimensionName = dimension.name || '';
+        const items = dimension.items || [];
+
+        items.forEach(item => {
+          allItems.push({
+            item_id: itemCounter++,
+            dimension: dimensionName,
+            item_text: item.text || ''
+          });
+        });
+      });
+
+      // Convert to CSV
+      const csvContent = this.convertToCSV(allItems, ['item_id', 'dimension', 'item_text']);
+
+      // Generate filename
+      const filename = `${this.sanitizeFilename(scale.scale_name || 'scale')}.csv`;
+
+      // Trigger download
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = filename;
+      link.click();
+    },
+
+    convertToCSV(data, columns) {
+      // Header row
+      const header = columns.join(',');
+
+      // Data rows
+      const rows = data.map(row => {
+        return columns.map(col => {
+          const value = row[col] ?? '';
+          // Escape quotes and wrap in quotes if contains comma/quote/newline
+          if (value.toString().includes(',') || value.toString().includes('"') || value.toString().includes('\n')) {
+            return `"${value.toString().replace(/"/g, '""')}"`;
+          }
+          return value;
+        }).join(',');
+      });
+
+      return [header, ...rows].join('\r\n');
+    },
+
+    sanitizeFilename(name) {
+      // Remove illegal filename characters and convert to lowercase kebab-case
+      return name
+        .toLowerCase()
+        .replace(/[^a-z0-9\s-]/g, '')
+        .replace(/\s+/g, '-')
+        .replace(/-+/g, '-')
+        .trim();
     },
 
     downloadCSV(rows, filename) {
