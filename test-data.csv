@@ -1,6 +1,11 @@
-item_id,item_text
-1,saya merasa percaya diri
-2,saya merasa bernilai
-3,saya dapat mengatasi masalah dengan baik
-4,saya merasa optimis tentang masa depan
-5,saya merasa dihargai oleh orang lain
+item_id,dimension,item_text
+1,Kepercayaan Diri,Saya merasa percaya diri dalam menghadapi tantangan baru
+2,Kepercayaan Diri,Saya merasa bernilai dan dihargai oleh orang lain
+3,Kepercayaan Diri,Saya dapat mengatasi masalah dengan baik dan tenang
+4,Regulasi Emosi,Saya mampu mengekspresikan perasaan saya dengan jelas
+5,Regulasi Emosi,Saya merasa nyaman ketika berinteraksi dengan orang baru
+6,Regulasi Emosi,Saya dapat menerima kritik dengan sikap terbuka
+7,Regulasi Emosi,Saya mampu mengelola stres dengan efektif
+8,Optimisme,Saya merasa optimis tentang masa depan saya
+9,Optimisme,Saya merasa puas dengan pencapaian hidup saya sejauh ini
+10,Optimisme,Saya merasa memiliki tujuan hidup yang jelas

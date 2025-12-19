@@ -639,18 +639,88 @@
   // Mock items with proper structure (dual rubric, origin mapping)
   const MOCK_ITEMS = [
     // Dimension 1: Kepercayaan Diri (items 1-3)
-    { item_id: '1', origin_item_id: '1', text: 'Saya merasa percaya diri dalam menghadapi tantangan baru', baseline_rubric: [], current_rubric: [], dimension: 'Kepercayaan Diri' },
-    { item_id: '2', origin_item_id: '2', text: 'Saya merasa bernilai dan dihargai oleh orang lain', baseline_rubric: [], current_rubric: [], dimension: 'Kepercayaan Diri' },
-    { item_id: '3', origin_item_id: '3', text: 'Saya dapat mengatasi masalah dengan baik dan tenang', baseline_rubric: [], current_rubric: [], dimension: 'Kepercayaan Diri' },
+    {
+      item_id: '1',
+      origin_item_id: '1',
+      text: 'Saya merasa percaya diri dalam menghadapi tantangan baru',
+      baseline_rubric: ['Kepercayaan Diri', 'Menghadapi Tantangan Baru', 'Merasa', 'Sudut Pandang Orang Pertama'],
+      current_rubric: ['Kepercayaan Diri', 'Menghadapi Tantangan Baru', 'Merasa', 'Sudut Pandang Orang Pertama'],
+      dimension: 'Kepercayaan Diri'
+    },
+    {
+      item_id: '2',
+      origin_item_id: '2',
+      text: 'Saya merasa bernilai dan dihargai oleh orang lain',
+      baseline_rubric: ['Nilai Diri', 'Dihargai oleh Orang Lain', 'Merasa', 'Sudut Pandang Orang Pertama'],
+      current_rubric: ['Nilai Diri', 'Dihargai oleh Orang Lain', 'Merasa', 'Sudut Pandang Orang Pertama'],
+      dimension: 'Kepercayaan Diri'
+    },
+    {
+      item_id: '3',
+      origin_item_id: '3',
+      text: 'Saya dapat mengatasi masalah dengan baik dan tenang',
+      baseline_rubric: ['Kemampuan Mengatasi Masalah', 'Ketenangan', 'Kemampuan (Dapat)', 'Sudut Pandang Orang Pertama'],
+      current_rubric: ['Kemampuan Mengatasi Masalah', 'Ketenangan', 'Kemampuan (Dapat)', 'Sudut Pandang Orang Pertama'],
+      dimension: 'Kepercayaan Diri'
+    },
     // Dimension 2: Regulasi Emosi (items 4-7)
-    { item_id: '4', origin_item_id: '4', text: 'Saya mampu mengekspresikan perasaan saya dengan jelas', baseline_rubric: [], current_rubric: [], dimension: 'Regulasi Emosi' },
-    { item_id: '5', origin_item_id: '5', text: 'Saya merasa nyaman ketika berinteraksi dengan orang baru', baseline_rubric: [], current_rubric: [], dimension: 'Regulasi Emosi' },
-    { item_id: '6', origin_item_id: '6', text: 'Saya dapat menerima kritik dengan sikap terbuka', baseline_rubric: [], current_rubric: [], dimension: 'Regulasi Emosi' },
-    { item_id: '7', origin_item_id: '7', text: 'Saya mampu mengelola stres dengan efektif', baseline_rubric: [], current_rubric: [], dimension: 'Regulasi Emosi' },
+    {
+      item_id: '4',
+      origin_item_id: '4',
+      text: 'Saya mampu mengekspresikan perasaan saya dengan jelas',
+      baseline_rubric: ['Ekspresi Perasaan', 'Kejelasan', 'Kemampuan (Mampu)', 'Sudut Pandang Orang Pertama'],
+      current_rubric: ['Ekspresi Perasaan', 'Kejelasan', 'Kemampuan (Mampu)', 'Sudut Pandang Orang Pertama'],
+      dimension: 'Regulasi Emosi'
+    },
+    {
+      item_id: '5',
+      origin_item_id: '5',
+      text: 'Saya merasa nyaman ketika berinteraksi dengan orang baru',
+      baseline_rubric: ['Kenyamanan', 'Interaksi dengan Orang Baru', 'Merasa', 'Sudut Pandang Orang Pertama'],
+      current_rubric: ['Kenyamanan', 'Interaksi dengan Orang Baru', 'Merasa', 'Sudut Pandang Orang Pertama'],
+      dimension: 'Regulasi Emosi'
+    },
+    {
+      item_id: '6',
+      origin_item_id: '6',
+      text: 'Saya dapat menerima kritik dengan sikap terbuka',
+      baseline_rubric: ['Penerimaan Kritik', 'Keterbukaan Sikap', 'Kemampuan (Dapat)', 'Sudut Pandang Orang Pertama'],
+      current_rubric: ['Penerimaan Kritik', 'Keterbukaan Sikap', 'Kemampuan (Dapat)', 'Sudut Pandang Orang Pertama'],
+      dimension: 'Regulasi Emosi'
+    },
+    {
+      item_id: '7',
+      origin_item_id: '7',
+      text: 'Saya mampu mengelola stres dengan efektif',
+      baseline_rubric: ['Pengelolaan Stres', 'Efektivitas', 'Kemampuan (Mampu)', 'Sudut Pandang Orang Pertama'],
+      current_rubric: ['Pengelolaan Stres', 'Efektivitas', 'Kemampuan (Mampu)', 'Sudut Pandang Orang Pertama'],
+      dimension: 'Regulasi Emosi'
+    },
     // Dimension 3: Optimisme (items 8-10)
-    { item_id: '8', origin_item_id: '8', text: 'Saya merasa optimis tentang masa depan saya', baseline_rubric: [], current_rubric: [], dimension: 'Optimisme' },
-    { item_id: '9', origin_item_id: '9', text: 'Saya merasa puas dengan pencapaian hidup saya sejauh ini', baseline_rubric: [], current_rubric: [], dimension: 'Optimisme' },
-    { item_id: '10', origin_item_id: '10', text: 'Saya merasa memiliki tujuan hidup yang jelas', baseline_rubric: [], current_rubric: [], dimension: 'Optimisme' }
+    {
+      item_id: '8',
+      origin_item_id: '8',
+      text: 'Saya merasa optimis tentang masa depan saya',
+      baseline_rubric: ['Optimisme', 'Masa Depan Diri', 'Merasa', 'Sudut Pandang Orang Pertama'],
+      current_rubric: ['Optimisme', 'Masa Depan Diri', 'Merasa', 'Sudut Pandang Orang Pertama'],
+      dimension: 'Optimisme'
+    },
+    {
+      item_id: '9',
+      origin_item_id: '9',
+      text: 'Saya merasa puas dengan pencapaian hidup saya sejauh ini',
+      baseline_rubric: ['Kepuasan', 'Pencapaian Hidup', 'Merasa', 'Sudut Pandang Orang Pertama', 'Waktu: Sejauh Ini'],
+      current_rubric: ['Kepuasan', 'Pencapaian Hidup', 'Merasa', 'Sudut Pandang Orang Pertama', 'Waktu: Sejauh Ini'],
+      dimension: 'Optimisme'
+    },
+    {
+      item_id: '10',
+      origin_item_id: '10',
+      text: 'Saya merasa memiliki tujuan hidup yang jelas',
+      baseline_rubric: ['Tujuan Hidup', 'Kejelasan Tujuan', 'Merasa', 'Sudut Pandang Orang Pertama'],
+      current_rubric: ['Tujuan Hidup', 'Kejelasan Tujuan', 'Merasa', 'Sudut Pandang Orang Pertama'],
+      dimension: 'Optimisme'
+    }
   ];
 
   // Mock scale structure
@@ -713,6 +783,10 @@
     isPanning: false,
     panStart: { x: 0, y: 0 },
     debugPanel: null,
+
+    // Edit mode state
+    activeEditItem: null,
+    editBackupText: '',
 
     init() {
       this.canvas = document.getElementById('flow-canvas');
@@ -839,13 +913,13 @@
              style="left: ${scale.position.x}px; top: ${scale.position.y}px;">
           <!-- Hover Tools -->
           <div class="flow-box-tools">
-            <button class="flow-tool-btn edit-mode-btn" title="Mode Edit">
+            <button class="flow-tool-btn edit-mode-btn" title="Edit Item">
               <img src="assets/edit_icon.png" alt="Edit">
             </button>
             <button class="flow-tool-btn export-btn" title="Simpan sebagai CSV">
               <img src="assets/save_icon.png" alt="Export">
             </button>
-            <button class="flow-tool-btn branch-btn" title="Buat Versi Baru">
+            <button class="flow-tool-btn branch-btn" title="Cabangkan ke Versi Baru">
               <img src="assets/branch_button_icon.png" alt="Branch">
             </button>
           </div>
@@ -894,13 +968,11 @@
 
       return `
         <div class="item-box ${integrityClass}" data-item-id="${itemId}">
-          <span class="item-text">i${itemIndex}: ${itemText}</span>
+          <span class="item-text">
+            <span class="item-index">i${itemIndex}: </span>
+            <span class="item-content">${itemText}</span>
+          </span>
           ${rubricHtml}
-          <div class="item-edit-controls">
-            <textarea class="item-edit-input"></textarea>
-            <button class="item-edit-confirm">✓</button>
-            <button class="item-edit-cancel">✗</button>
-          </div>
         </div>
       `;
     },
@@ -921,7 +993,7 @@
       const rubricItems = item.current_rubric.map(r => `<span class="rubric-item">${r}</span>`).join('');
       return `
         <div class="rubric-popup">
-          <div class="rubric-title">Inti Makna</div>
+          <div class="rubric-title">Rubrik: Sifat-Sifat Dasar di Kalimat</div>
           <div class="rubric-list">${rubricItems}</div>
         </div>
       `;
@@ -964,15 +1036,72 @@
         });
       });
 
-      // Edit mode toggle
+      // Edit mode toggle (flow-level permission)
       document.querySelectorAll('.edit-mode-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
           e.stopPropagation();
           const flowBox = e.target.closest('.flow-box');
-          flowBox.querySelectorAll('.item-box').forEach(item => {
-            item.classList.toggle('edit-mode');
-          });
+          const scaleId = flowBox.dataset.scaleId;
+          const scale = state.canvasState.scales.get(scaleId);
+
+          const isEntering = !flowBox.classList.contains('flow-edit-mode');
+
+          if (isEntering) {
+            // Exit edit mode on any other flow boxes first (confirm their active edits)
+            document.querySelectorAll('.flow-box.flow-edit-mode').forEach(box => {
+              this.confirmOrRevertEdit();
+              box.classList.remove('flow-edit-mode');
+            });
+
+            // Auto-expand if collapsed
+            if (scale && !scale.expanded) {
+              scale.expanded = true;
+              flowBox.classList.remove('flow-mode-collapsed');
+              setTimeout(() => this.updateCanvasBounds(), 350);
+            }
+
+            // Enter edit mode
+            flowBox.classList.add('flow-edit-mode');
+            this.showEditTooltip(btn);
+          } else {
+            // Confirm any active edit before exiting
+            this.confirmOrRevertEdit();
+            flowBox.classList.remove('flow-edit-mode');
+            this.showNotification('Edit item dinonaktifkan');
+          }
         });
+      });
+
+      // Click handler for edit mode interactions
+      document.addEventListener('click', (e) => {
+        const clickedItem = e.target.closest('.item-box');
+        const activeEditBox = document.querySelector('.flow-box.flow-edit-mode');
+
+        // Handle click on item in edit mode
+        if (clickedItem && activeEditBox && activeEditBox.contains(clickedItem)) {
+          // If clicking on a different item than the one being edited
+          if (this.activeEditItem && this.activeEditItem !== clickedItem) {
+            this.confirmOrRevertEdit();
+          }
+
+          // Start editing this item if not already
+          if (!clickedItem.classList.contains('item-editing')) {
+            e.stopPropagation();
+            this.startEditItem(clickedItem);
+          }
+          return;
+        }
+
+        // Click outside active edit item → confirm if dirty
+        if (this.activeEditItem && !this.activeEditItem.contains(e.target)) {
+          this.confirmOrRevertEdit();
+        }
+
+        // Click outside flow box in edit mode → exit edit mode
+        if (activeEditBox && !activeEditBox.contains(e.target)) {
+          activeEditBox.classList.remove('flow-edit-mode');
+          this.showNotification('Edit item dinonaktifkan');
+        }
       });
 
       // Branch button
@@ -988,14 +1117,10 @@
       // Per-scale export
       document.querySelectorAll('.flow-box-tools .export-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
-          e.preventDefault();
           e.stopPropagation();
-          e.stopImmediatePropagation();
           const flowBox = e.target.closest('.flow-box');
           const scaleId = flowBox.dataset.scaleId;
-          console.log('[export-btn] clicked, scaleId:', scaleId);
-          this.exportScaleCSV(scaleId);
-          return false;
+          this.exportScale(scaleId);
         });
       });
 
@@ -1022,6 +1147,58 @@
           e.stopPropagation();
           const itemBox = e.target.closest('.item-box');
           this.cancelItemEdit(itemBox);
+        });
+      });
+
+      // Rubric popup portal (escapes stacking context)
+      let activeRubricPopup = null;
+
+      document.querySelectorAll('.item-box').forEach(itemBox => {
+        itemBox.addEventListener('mouseenter', (e) => {
+          const rubricData = itemBox.querySelector('.rubric-popup');
+          if (!rubricData) return;
+
+          // Remove existing popup
+          if (activeRubricPopup) {
+            activeRubricPopup.remove();
+            activeRubricPopup = null;
+          }
+
+          // Create portal popup in body
+          const popup = document.createElement('div');
+          popup.className = 'rubric-popup-portal';
+          popup.innerHTML = rubricData.innerHTML;
+          document.body.appendChild(popup);
+          activeRubricPopup = popup;
+
+          // Position using getBoundingClientRect
+          const positionPopup = () => {
+            const rect = itemBox.getBoundingClientRect();
+            popup.style.position = 'fixed';
+            popup.style.top = `${rect.top + (rect.height / 2)}px`;
+            popup.style.left = `${rect.right + 12}px`;
+            popup.style.transform = 'translateY(-50%)';
+            popup.style.opacity = '1';
+            popup.style.visibility = 'visible';
+          };
+
+          positionPopup();
+
+          // Update position on scroll/pan
+          const updateHandler = () => positionPopup();
+          window.addEventListener('scroll', updateHandler, { passive: true });
+          itemBox._rubricScrollHandler = updateHandler;
+        });
+
+        itemBox.addEventListener('mouseleave', () => {
+          if (activeRubricPopup) {
+            activeRubricPopup.remove();
+            activeRubricPopup = null;
+          }
+          if (itemBox._rubricScrollHandler) {
+            window.removeEventListener('scroll', itemBox._rubricScrollHandler);
+            delete itemBox._rubricScrollHandler;
+          }
         });
       });
     },
@@ -1065,8 +1242,7 @@
       if (input) input.value = '';
     },
 
-    exportScaleInternal(scaleId) {
-      console.trace('[exportScaleInternal] CALLED');
+    exportScale(scaleId) {
       const scale = state.canvasState.scales.get(scaleId);
       if (!scale) return;
 
@@ -1090,7 +1266,6 @@
     },
 
     exportAllScales() {
-      console.trace('[exportAllScales] CALLED');
       const rows = [['scale_id', 'scale_name', 'parent_scale_id', 'dimension_name', 'item_id', 'origin_item_id', 'item_text', 'baseline_rubric', 'current_rubric']];
 
       state.canvasState.scales.forEach(scale => {
@@ -1114,10 +1289,7 @@
       this.downloadCSV(rows, 'MLPA_All_Scales.csv');
     },
 
-    exportScaleCSV(scaleId) {
-      alert('[exportScaleCSV] Function called with scaleId: ' + scaleId);
-      console.log('[exportScaleCSV] called', scaleId);
-
+    exportScale(scaleId) {
       // Get scale data
       const scale = state.canvasState.scales.get(scaleId);
       if (!scale) {
@@ -1142,43 +1314,18 @@
         });
       });
 
-
       // Convert to CSV
       const csvContent = this.convertToCSV(allItems, ['item_id', 'dimension', 'item_text']);
-      console.log('[1] csvContent:', csvContent);
-      console.log('[1] csvContent type:', typeof csvContent);
-      console.log('[1] csvContent length:', csvContent.length);
 
       // Generate filename
       const filename = `${this.sanitizeFilename(scale.scale_name || 'scale')}.csv`;
-      console.log('[2] filename:', filename);
 
-      // Navigate to CSV instead of downloading
+      // Trigger download
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-      console.log('[3] blob:', blob);
-      console.log('[3] blob.size:', blob.size);
-      console.log('[3] blob.type:', blob.type);
-
-      const url = URL.createObjectURL(blob);
-      console.log('[4] url:', url);
-
-      // Create download link (ORIGINAL METHOD)
-      console.log('[5] Creating <a> element...');
       const link = document.createElement('a');
-      console.log('[5] link element:', link);
-
-      link.href = url;
-      console.log('[6] link.href set to:', link.href);
-
+      link.href = URL.createObjectURL(blob);
       link.download = filename;
-      console.log('[7] link.download set to:', link.download);
-
-      console.log('[8] About to click link...');
       link.click();
-      console.log('[9] After link.click() - download should have triggered');
-
-      console.log('I OPEN CSV');
-
     },
 
     convertToCSV(data, columns) {
@@ -1211,7 +1358,6 @@
     },
 
     downloadCSV(rows, filename) {
-      console.trace('[downloadCSV] CALLED with filename:', filename);
       const csvContent = rows.map(row =>
         row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')
       ).join('\n');
@@ -1222,6 +1368,169 @@
       link.download = filename;
       link.click();
       URL.revokeObjectURL(link.href);
+    },
+
+    startEditItem(itemBox) {
+      const flowBox = itemBox.closest('.flow-box');
+      if (!flowBox || !flowBox.classList.contains('flow-edit-mode')) return;
+
+      const itemContent = itemBox.querySelector('.item-content');
+      if (!itemContent) return;
+
+      // Store backup
+      this.editBackupText = itemContent.textContent;
+      this.activeEditItem = itemBox;
+
+      // Enter editing state
+      itemBox.classList.add('item-editing');
+      itemContent.contentEditable = 'true';
+      itemContent.focus();
+
+      // Move cursor to end
+      const range = document.createRange();
+      range.selectNodeContents(itemContent);
+      range.collapse(false);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+
+      // Add keyboard handlers
+      itemContent.addEventListener('keydown', this.handleEditKeydown.bind(this));
+      itemContent.addEventListener('paste', this.handleEditPaste.bind(this));
+    },
+
+    handleEditKeydown(e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        this.confirmOrRevertEdit();
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        this.cancelActiveEdit();
+      }
+    },
+
+    handleEditPaste(e) {
+      e.preventDefault();
+      const text = e.clipboardData.getData('text/plain');
+      // Insert plain text only, collapse newlines to spaces
+      const cleanText = text.replace(/[\r\n]+/g, ' ').trim();
+      document.execCommand('insertText', false, cleanText);
+    },
+
+    confirmOrRevertEdit() {
+      if (!this.activeEditItem) return;
+
+      const itemContent = this.activeEditItem.querySelector('.item-content');
+      if (!itemContent) {
+        this.cancelActiveEdit();
+        return;
+      }
+
+      const newText = itemContent.textContent.trim();
+      const isDirty = newText !== this.editBackupText;
+
+      if (isDirty && newText.length > 0) {
+        // Update state first
+        const flowBox = this.activeEditItem.closest('.flow-box');
+        const scaleId = flowBox.dataset.scaleId;
+        const itemId = this.activeEditItem.dataset.itemId;
+        const scale = state.canvasState.scales.get(scaleId);
+
+        if (scale) {
+          for (const dim of scale.dimensions || []) {
+            for (const it of dim.items || []) {
+              if (it.item_id === itemId) {
+                it.text = newText;
+                break;
+              }
+            }
+          }
+        }
+
+        // Update DOM second
+        itemContent.textContent = newText;
+      } else if (isDirty && newText.length === 0) {
+        // Dirty but empty → revert
+        itemContent.textContent = this.editBackupText;
+      }
+      // If not dirty, just exit without changes
+
+      // Exit editing state
+      itemContent.contentEditable = 'false';
+      itemContent.removeEventListener('keydown', this.handleEditKeydown);
+      itemContent.removeEventListener('paste', this.handleEditPaste);
+      this.activeEditItem.classList.remove('item-editing');
+      this.activeEditItem = null;
+      this.editBackupText = '';
+    },
+
+    cancelActiveEdit() {
+      if (!this.activeEditItem) return;
+
+      const itemContent = this.activeEditItem.querySelector('.item-content');
+      if (itemContent) {
+        // Restore backup
+        itemContent.textContent = this.editBackupText;
+        itemContent.contentEditable = 'false';
+        itemContent.removeEventListener('keydown', this.handleEditKeydown);
+        itemContent.removeEventListener('paste', this.handleEditPaste);
+      }
+
+      // Exit editing state
+      this.activeEditItem.classList.remove('item-editing');
+      this.activeEditItem = null;
+      this.editBackupText = '';
+    },
+
+    showEditTooltip(button) {
+      // Remove any existing tooltip
+      const existingTooltip = document.querySelector('.edit-mode-tooltip');
+      if (existingTooltip) {
+        existingTooltip.remove();
+      }
+
+      // Create tooltip element
+      const tooltip = document.createElement('div');
+      tooltip.className = 'edit-mode-tooltip';
+      tooltip.textContent = 'Klik item untuk mengedit teks';
+      document.body.appendChild(tooltip);
+
+      // Position above button (left-leaning)
+      const rect = button.getBoundingClientRect();
+      tooltip.style.position = 'fixed';
+      tooltip.style.left = `${rect.right}px`;
+      tooltip.style.top = `${rect.top - 6}px`;
+      tooltip.style.transform = 'translate(-100%, -100%)';
+
+      // Trigger animation by adding active class after paint
+      requestAnimationFrame(() => {
+        tooltip.classList.add('active');
+      });
+
+      // Auto-remove after 0.5 seconds
+      setTimeout(() => {
+        tooltip.classList.remove('active');
+        setTimeout(() => tooltip.remove(), 150);
+      }, 1500);
+    },
+
+    showNotification(message) {
+      // Create notification element
+      const notification = document.createElement('div');
+      notification.className = 'edit-notification';
+      notification.textContent = message;
+      document.body.appendChild(notification);
+
+      // Trigger animation
+      requestAnimationFrame(() => {
+        notification.classList.add('show');
+      });
+
+      // Auto-remove after 1 second
+      setTimeout(() => {
+        notification.classList.remove('show');
+        setTimeout(() => notification.remove(), 400);
+      }, 1500);
     },
 
     renderConnections() {

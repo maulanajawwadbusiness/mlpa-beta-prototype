@@ -1,10 +1,10 @@
 # MLPA Prototype Technical Documentation
 
 ## 1. Project Overview
-The **MLPA (Multi-Level Profiling Assessment)** prototype is a web-based tool designed for psychometric scale management. It allows users to upload CSV data, visualize psychometric scales, run assessments, and edit/adapt scales using a node-based flow interface.
+The **MLPA (Multi-Level Profiling Assessment)** prototype is a web-based tool designed for psychometric scale management. It allows users to upload CSV data, visualize psychometric scales, run assessments, and edit/adapt scales using a node-based flow interface with semantic rubric tracking.
 
 **Target Audience:** Psychometricians and researchers.
-**Key Focus:** Clean, Apple-like minimal UI, responsive flow editing, and AI-assisted scale adaptation (GPT-5.2 ready).
+**Key Focus:** Clean, Apple-like minimal UI, responsive flow editing, contenteditable item editing, and semantic rubric visualization.
 
 ---
 
@@ -25,6 +25,7 @@ The **MLPA (Multi-Level Profiling Assessment)** prototype is a web-based tool de
 | `app.js` | Main application logic, state management, event handling, and Flow Editor module. |
 | `api.js` | Abstraction layer for OpenAI GPT-5.2 API interactions. |
 | `config.js` | Configuration values (e.g., API keys - kept local). |
+| `test-data.csv` | Mock data representing 10 items across 3 dimensions with rubrics. |
 
 ---
 
@@ -51,7 +52,8 @@ const state = {
     scales: Map<string, Scale>,  // The core graph data
     connections: [],             // Visual bezier lines
     pan: { x: 0, y: 0 },         // Canvas offset
-    activeScaleId: null
+    activeScaleId: null,
+    branchingFromScaleId: null
   }
 };
 ```
@@ -62,11 +64,11 @@ The app functions as a Single Page Application (SPA).
 - **Inner Screens:** Sidebar navigation switches between "Tampilan Preview" and "Tampilan Edit" without reloading.
 
 ### 4.3 Data Flow
-1. **Input:** User uploads CSV or uses Mock Data.
+1. **Input:** User uploads CSV or uses Mock Data (10 items with rubrics).
 2. **Parsing:** Custom CSV parser converts text to JSON objects.
-3. **Transformation:** Data is structured into Scales > Dimensions > Items.
-4. **Rendering:** active screen reads from `state` and updates the DOM.
-5. **Output:** Global or per-scale CSV export.
+3. **Transformation:** Data is structured into Scales > Dimensions > Items with rubric tracking.
+4. **Rendering:** Active screen reads from `state` and updates the DOM.
+5. **Output:** Global or per-scale CSV export with baseline/current rubric columns.
 
 ---
 
@@ -101,7 +103,8 @@ A custom-built node-based editor for managing scales with infinite canvas archit
   - `updateCanvasTransform()`: Applies pan transform to `#flow-world`
   - `createFlowBoxHtml()`: Generates HTML for each scale node with global item indexing
   - `createDimensionHtml()`: Renders dimension containers with vertical labels
-  - `createItemHtml()`: Renders individual items with `i{n}:` prefix
+  - `createItemHtml()`: Renders individual items with split prefix architecture
+  - `createRubricPopupHtml()`: Generates rubric popup HTML (hidden, used as data source)
 
 #### **Interaction:**
 - **Panning:** Mouse drag on canvas background translates `#flow-world` layer
@@ -122,6 +125,9 @@ A custom-built node-based editor for managing scales with infinite canvas archit
 #### **Item Indexing:**
 - **Global Counter:** Items numbered continuously across all dimensions within each flow box
 - **Format:** `i1: {text}`, `i2: {text}`, etc.
+- **Split Prefix Architecture:** 
+  - `<span class="item-index">i1: </span>` (non-editable, muted)
+  - `<span class="item-content">{text}</span>` (editable via contenteditable)
 - **Implementation:** Counter initialized in `createFlowBoxHtml()`, incremented per dimension
 
 #### **Data Models (Screen 3):**
@@ -154,13 +160,110 @@ Crucial for MLPA "Core Meaning" verification.
   item_id: "1",
   origin_item_id: "1",       // Tracks lineage across branches
   text: "Saya merasa...",
-  baseline_rubric: [],       // Immutable original traits
-  current_rubric: [],        // Mutable current traits (AI generated)
+  baseline_rubric: ["Kepercayaan Diri", "Merasa", ...],  // Immutable original traits
+  current_rubric: ["Kepercayaan Diri", "Merasa", ...],   // Mutable current traits
   dimension: "Kepercayaan Diri"
 }
 ```
 
-### 5.3 OpenAI API Layer (`api.js`)
+### 5.3 Item Editing System
+**Philosophy:** "Calm, boring, invisible" Apple-like single-item editing with contenteditable.
+
+#### **Edit Mode Activation:**
+- **Flow-Level:** Click edit button on flow box to enter `.flow-edit-mode`
+- **Auto-Expansion:** Collapsed flow boxes auto-expand when entering edit mode
+- **Single-Flow Constraint:** Only one flow box can be in edit mode at a time
+- **UI Feedback:**
+  - Tooltip: "Klik item untuk mengedit teks" (1.5s, left-aligned, flat)
+  - Notification: "Edit item ditutup" (1.5s, bottom-right toast)
+
+#### **Item-Level Editing:**
+- **Activation:** Single-click on item (when flow is in edit mode)
+- **Visual State:** Subtle blue outline (`box-shadow: inset 0 0 0 2px rgba(59, 130, 246, 0.8)`)
+- **Editing:** Contenteditable on `.item-content` span only (prefix protected)
+- **Confirmation:**
+  - `Enter` key or click outside (if text changed/dirty)
+  - Dirty-check logic: saves if valid, reverts if empty
+- **Cancellation:** `Escape` key
+- **Switching Items:** Clicking another item confirms current, starts new edit
+- **Plain Text Paste:** Newlines collapsed to spaces
+
+#### **State Variables:**
+```javascript
+flowEditor: {
+  activeEditItem: null,      // DOM reference to .item-box being edited
+  editBackupText: '',        // Original text for revert
+  // ... other properties
+}
+```
+
+#### **Helper Functions:**
+- `startEditItem(itemBox)`: Enables contenteditable, focuses, positions cursor
+- `confirmOrRevertEdit()`: Dirty-check logic, updates state then DOM
+- `cancelActiveEdit()`: Restores backup text, cleans up
+- `handleEditKeydown(e)`: Enter/Escape key handling
+- `handleEditPaste(e)`: Plain text paste enforcement
+- `showEditTooltip(button)`: Portal tooltip above edit button
+- `showNotification(message)`: Bottom-right toast notification
+
+### 5.4 Rubric Popup System
+**Purpose:** Display semantic traits (rubric) for each item on hover.
+
+#### **Architecture:**
+- **Portal Pattern:** Popup rendered in `document.body` to escape stacking contexts
+- **Trigger:** `mouseenter` on `.item-box`
+- **Positioning:** `getBoundingClientRect()` for precise placement
+  - Horizontal: 12px to the right of item box
+  - Vertical: Center-to-center anchoring (`top: 50%, transform: translateY(-50%)`)
+- **Data Source:** Hidden `.rubric-popup` div in item HTML (display: none)
+- **Portal Element:** `.rubric-popup-portal` with `position: fixed, z-index: 10000`
+
+#### **Display Logic:**
+```javascript
+if (item.current_rubric && item.current_rubric.length > 0) {
+  // Show actual rubric traits
+  title: "Rubrik: Sifat-Sifat Dasar di Kalimat"
+  items: ["Kepercayaan Diri", "Merasa", ...]
+} else {
+  // Show placeholder
+  title: "Rubrik (placeholder)"
+  items: ["Akan digenerate oleh AI"]
+}
+```
+
+#### **Styling:**
+- Background: `rgba(0, 0, 0, 0.85)` (dark, semi-transparent)
+- Font: 11px, properly capitalized rubric traits
+- Transition: `opacity 0.15s ease-out`
+- No shadow (flat design)
+- Bullet points before each trait
+
+### 5.5 Mock Data System
+**File:** `test-data.csv` and `MOCK_ITEMS` constant in `app.js`
+
+**Structure:** 10 items across 3 dimensions with complete rubric data:
+- **Dimension 1:** Kepercayaan Diri (items 1-3)
+- **Dimension 2:** Regulasi Emosi (items 4-7)
+- **Dimension 3:** Optimisme (items 8-10)
+
+**Rubric Example (Item 1):**
+```javascript
+baseline_rubric: [
+  'Kepercayaan Diri',
+  'Menghadapi Tantangan Baru',
+  'Merasa',
+  'Sudut Pandang Orang Pertama'
+]
+```
+
+**CSV Format:**
+```csv
+item_id,dimension,item_text
+1,Kepercayaan Diri,Saya merasa percaya diri dalam menghadapi tantangan baru
+...
+```
+
+### 5.6 OpenAI API Layer (`api.js`)
 - **Purpose:** Abstract GPT-5.2 complexity.
 - **Methods:** `analyzeCSV`, `ask`, `createResponse`.
 - **Config:** Supports `gpt-5.2` and `gpt-5.2-mini`.
@@ -169,11 +272,11 @@ Crucial for MLPA "Core Meaning" verification.
 
 ## 6. Styling System (`styles.css`)
 - **Philosophy:** "Apple-like" minimalism. High whitespace, subtle borders, no distinct backgrounds for headers.
-- **Variables:** extensive use of `:root` for consistency.
+- **Variables:** Extensive use of `:root` for consistency.
   - Colors: `--color-bg`, `--sidebar-bg` (Dark mode sidebar, Light mode content).
   - Spacing: `--space-min` (24px).
   - Typography: `--font-size-xs` (11px), `--font-size-base` (16px).
-  - Transitions: `--transition-smooth`.
+  - Transitions: `--transition-smooth`, `--transition-fast`.
 - **BEM-ish Naming:** `.flow-box`, `.flow-box-header`, `.flow-box-content`.
 - **Flow Mode:** `.flow-mode` class enforces compact typography (12.5px, line-height 1.35) for system-map aesthetic.
 
@@ -183,9 +286,39 @@ Crucial for MLPA "Core Meaning" verification.
 - **Dimension Labels:** Two-line vertical text with 2px gap
 - **Item Display:** Prefixed with global index (i1, i2, i3...)
 - **Canvas Bounds:** Dynamically updated after render and expand/collapse
+- **Edit Mode:** Flow-level permission, item-level activation, contenteditable
+- **Rubric Popups:** Portal-based, center-aligned, 10000 z-index
 
-## 8. Extensions & Maintenance
+## 8. Key Constraints & Design Decisions
+
+### 8.1 Edit Mode
+- **Non-Negotiable:** No visible textarea or buttons (✓/✕)
+- **Interaction Model:** Single-click to edit, Enter/click-outside to confirm, Escape to cancel
+- **Visual Feedback:** Minimal (blue outline only)
+- **Text Handling:** Plain text only, no rich formatting
+
+### 8.2 Rubric Popups
+- **Stacking Context Solution:** Portal pattern (render in body)
+- **Positioning:** Dynamic via getBoundingClientRect, not CSS-only
+- **Z-Index Strategy:** 10000 (highest layer, like notifications)
+- **Overflow Handling:** Escaped via portal, not CSS overflow fixes
+
+### 8.3 Data Integrity
+- **Rubric Tracking:** Dual rubric system (baseline vs current)
+- **Origin Tracking:** `origin_item_id` for lineage across branches
+- **Dirty Check:** Only save if text changed and valid (non-empty)
+
+## 9. Extensions & Maintenance
 - **Adding Features:** Add new properties to `state` and update the relevant render function in `app.js`.
 - **Debugging:** Use the built-in Debug Panel in Screen 3 to inspect state without console logging.
 - **Canvas Clipping Issues:** Ensure transforms are applied to `#flow-world`, not `#flow-canvas`.
 - **Item Indexing:** Counter lives in `createFlowBoxHtml()`, resets per flow box.
+- **Stacking Context Issues:** Use portal pattern (render in body) for overlays that need to escape parent contexts.
+- **Edit Mode State:** Always check `flowEditor.activeEditItem` before modifying edit state.
+
+## 10. Known Limitations
+- **Browser Support:** Modern browsers only (ES6+, CSS Grid, contenteditable)
+- **CSV Format:** Expects specific column names (item_id, dimension, item_text)
+- **Rubric Generation:** Placeholder only (AI integration pending)
+- **Branching:** UI exists but backend logic incomplete
+- **Undo/Redo:** Not implemented for item edits
