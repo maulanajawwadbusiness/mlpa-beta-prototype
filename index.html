@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="MLPA - Multi-Level Profiling Assessment Prototype">
+  <title>MLPA Prototype</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+  <!-- Screen 1: Welcome -->
+  <section id="screen-1" class="screen welcome-screen active">
+    <div class="upload-zone" id="upload-zone" role="button" tabindex="0"
+      aria-label="Unggah file atau tarik file ke sini">
+      <div class="content-block">
+        <h1 class="title">
+          <span class="title-sub">Prototype untuk</span>
+          <span class="title-main">MLPA (Multi-Level Profiling Assessment)</span>
+        </h1>
+        <img src="assets/drag_and_drop_icon.png" alt="" class="drop-icon" aria-hidden="true">
+        <p class="instruction">
+          Unggah file CSV,<br>
+          atau tarik file ke sini
+        </p>
+        <p class="error-message" id="error-message" role="alert" aria-live="polite"></p>
+        <button class="test-api-btn" id="test-mock-btn">Uji dengan Data Mock</button>
+      </div>
+    </div>
+    <input type="file" id="file-input" class="file-input" accept=".csv" aria-hidden="true">
+  </section>
+
+  <!-- Main App Container (Screen 2 & 3) -->
+  <div id="app-container" class="app-container">
+    <!-- Sidebar -->
+    <aside id="sidebar" class="sidebar">
+      <div class="sidebar-header">
+        <span class="sidebar-title">MLPA (Prototype)</span>
+        <button id="sidebar-toggle" class="sidebar-toggle-btn" aria-label="Toggle sidebar">
+          <img src="assets/sidebar_hide_icon.png" alt="" class="sidebar-icon sidebar-hide-icon">
+          <img src="assets/sidebar_show_icon.png" alt="" class="sidebar-icon sidebar-show-icon">
+          <span class="sidebar-toggle-tooltip">Sembunyikan sidebar</span>
+        </button>
+      </div>
+
+      <nav class="sidebar-nav">
+        <button class="nav-item active" data-screen="2">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+            <circle cx="12" cy="12" r="3" />
+          </svg>
+          <span class="nav-text">Tampilan Preview</span>
+        </button>
+        <button class="nav-item" data-screen="3">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+          </svg>
+          <span class="nav-text">Tampilan Edit</span>
+        </button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <span class="version-text">Versi 0.1 Beta Prototype</span>
+      </div>
+    </aside>
+
+    <!-- Show Sidebar Button (Visible when sidebar collapsed) -->
+    <button id="sidebar-show-btn" class="sidebar-show-btn" aria-label="Tampilkan sidebar">
+      <img src="assets/sidebar_show_icon.png" alt="" class="sidebar-show-icon-img">
+      <span class="sidebar-show-tooltip">Tampilkan sidebar</span>
+    </button>
+
+    <!-- Main Content Area -->
+    <main id="main-content" class="main-content">
+      <!-- Preview Mode Toggle -->
+      <button id="preview-toggle" class="preview-toggle" aria-label="Toggle preview mode">
+        <svg class="eye-icon eye-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path
+            d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+          <line x1="1" y1="1" x2="23" y2="23" />
+        </svg>
+        <svg class="eye-icon eye-on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+          <circle cx="12" cy="12" r="3" />
+        </svg>
+      </button>
+
+      <!-- Preview Mode Return Button -->
+      <button id="preview-return" class="preview-return" aria-label="Kembali dari preview mode">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M15 18l-6-6 6-6" />
+        </svg>
+        <span class="preview-return-tooltip">Kembali ke tampilan asli</span>
+      </button>
+
+      <!-- Screen 2: Tampilan Preview -->
+      <section id="screen-2" class="screen inner-screen active">
+        <div class="screen-header admin-ui">
+          <h2 class="screen-title">Tampilan Preview</h2>
+          <div class="dropdown-wrapper">
+            <select id="scale-dropdown" class="scale-dropdown">
+              <option value="">-- Pilih Skala --</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Questionnaire Container -->
+        <div id="questionnaire" class="questionnaire">
+          <div class="item-container">
+            <p id="item-counter" class="item-counter admin-ui">Item 1 / 5</p>
+            <p id="item-text" class="item-text">Loading...</p>
+          </div>
+
+          <!-- Likert Scale -->
+          <div class="likert-scale">
+            <span class="likert-label left">Sangat Tidak Setuju</span>
+            <div class="likert-dots">
+              <button class="likert-dot" data-value="1">
+                <span class="dot"></span>
+                <span class="dot-label">1</span>
+              </button>
+              <button class="likert-dot" data-value="2">
+                <span class="dot"></span>
+                <span class="dot-label">2</span>
+              </button>
+              <button class="likert-dot" data-value="3">
+                <span class="dot"></span>
+                <span class="dot-label">3</span>
+              </button>
+              <button class="likert-dot" data-value="4">
+                <span class="dot"></span>
+                <span class="dot-label">4</span>
+              </button>
+              <button class="likert-dot" data-value="5">
+                <span class="dot"></span>
+                <span class="dot-label">5</span>
+              </button>
+            </div>
+            <span class="likert-label right">Sangat Setuju</span>
+          </div>
+
+          <!-- Navigation Arrows -->
+          <div class="nav-arrows">
+            <button id="prev-btn" class="nav-arrow prev" aria-label="Previous item">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M15 18l-6-6 6-6" />
+              </svg>
+              <span>Sebelum</span>
+            </button>
+            <button id="next-btn" class="nav-arrow next" aria-label="Next item">
+              <span>Selanjutnya</span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M9 18l6-6-6-6" />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Completion Screen -->
+        <div id="completion" class="completion hidden">
+          <p class="completion-text">Terima kasih telah menjawab kuesioner kami!</p>
+          <div class="admin-report admin-ui">
+            <p class="report-title">Laporan untuk Admin:</p>
+            <p class="report-score">Skor Akhir: <span id="final-score">0</span>/<span id="max-score">50</span></p>
+          </div>
+        </div>
+
+        <!-- Reset Button (Bottom Left of Screen) -->
+        <button id="reset-btn" class="reset-icon-btn" aria-label="Mulai ulang kuesioner">
+          <img src="assets/reset_icon.png" alt="" class="reset-icon">
+          <span class="reset-tooltip">Mulai ulang kuesioner</span>
+        </button>
+      </section>
+
+      <!-- Screen 3: Tampilan Edit -->
+      <section id="screen-3" class="screen inner-screen flow-screen">
+        <!-- Global Export Button -->
+        <button id="global-export-btn" class="global-export-btn" aria-label="Simpan semua ke CSV">
+          <img src="assets/save_icon.png" alt="" class="global-export-icon">
+          <span>Simpan ke CSV</span>
+        </button>
+
+        <!-- Flow Canvas (Pannable) -->
+        <div id="flow-canvas" class="flow-canvas">
+          <!-- SVG Layer for Connection Lines -->
+          <svg id="flow-connections" class="flow-connections"></svg>
+
+          <!-- Flow Boxes Container -->
+          <div id="flow-boxes" class="flow-boxes">
+            <!-- Flow boxes will be rendered here dynamically -->
+          </div>
+        </div>
+
+        <!-- Branching Chat Popup -->
+        <div id="branching-popup" class="branching-popup hidden">
+          <div class="branching-popup-header">
+            <span class="branching-popup-title">Buat Versi Baru</span>
+            <button id="branching-popup-close" class="branching-popup-close" aria-label="Tutup">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M18 6L6 18M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          <div class="branching-popup-body">
+            <textarea id="branching-input" class="branching-input"
+              placeholder="Contoh: adaptasi untuk Gen-Z, atau adaptasi budaya Padang..."></textarea>
+          </div>
+          <div class="branching-popup-footer">
+            <button id="branching-submit" class="branching-submit">
+              <span>Buat Skala Baru</span>
+            </button>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Fullscreen Button (Always visible) -->
+  <button class="fullscreen-btn" id="fullscreen-btn" aria-label="Toggle fullscreen">
+    <svg class="icon-expand" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+      stroke-linecap="round" stroke-linejoin="round">
+      <path d="M8 3H5a2 2 0 0 0-2 2v3" />
+      <path d="M21 8V5a2 2 0 0 0-2-2h-3" />
+      <path d="M3 16v3a2 2 0 0 0 2 2h3" />
+      <path d="M16 21h3a2 2 0 0 0 2-2v-3" />
+    </svg>
+    <svg class="icon-compress" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+      stroke-linecap="round" stroke-linejoin="round">
+      <path d="M8 3v3a2 2 0 0 1-2 2H3" />
+      <path d="M21 8h-3a2 2 0 0 1-2-2V3" />
+      <path d="M3 16h3a2 2 0 0 1 2 2v3" />
+      <path d="M16 21v-3a2 2 0 0 1 2-2h3" />
+    </svg>
+  </button>
+
+  <script src="api.js"></script>
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+
+</html>
