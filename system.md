@@ -136,14 +136,55 @@ A custom-built node-based editor for managing scales with infinite canvas archit
 {
   scale_id: "skala-asli",
   scale_name: "Skala Asli",
-  parent_scale_id: null,
+  parent_scale_id: null,        // null for root, scale_id for branches
   is_root: true,
-  dimensions: [ ... ], // Array of Dimensions
+  dimensions: [ ... ],           // Array of Dimensions
   position: { x: 100, y: 100 },
-  expanded: false,  // Default collapsed state
-  __positionInitialized: false  // Internal flag for optical centering
+  expanded: false,               // Default collapsed state
+  branch_index: 0,               // Index among siblings (0, 1, 2, ...)
+  positionLocked: false          // Prevents auto-repositioning if true
 }
 ```
+
+#### **Branching Flowbox Positioning:**
+**Architecture:**
+- **Deterministic Layout:** Uses `branch_index` from scale ID counting, not DOM queries
+- **Position Locking:** Branched scales have `positionLocked: true` to prevent auto-repositioning
+- **Pure Rendering:** `renderAll()` never mutates positions of locked scales
+
+**Positioning Constants:**
+```javascript
+HORIZONTAL_GAP = 450   // X offset from parent to child column
+VERTICAL_GAP = 24      // Space between sibling scales
+ESTIMATED_HEIGHT = 180 // Height estimate per scale
+ROW_HEIGHT = 204       // Total row spacing (HEIGHT + GAP)
+```
+
+**Position Calculation:**
+```javascript
+// For branch with index N from parent at (px, py):
+x = px + HORIZONTAL_GAP
+y = py + (branch_index + 1) * ROW_HEIGHT
+
+// Example:
+// Parent at (100, 100)
+// Branch 0: (550, 304)  // 100 + (0+1)*204
+// Branch 1: (550, 508)  // 100 + (1+1)*204
+// Branch 2: (550, 712)  // 100 + (2+1)*204
+```
+
+**Key Methods:**
+- `getNextBranchPosition(sourceScaleId, branch_index)`: Computes position for new branch
+- `handleBranchingSubmit()`: Creates mock branched scale with locked position
+- `openBranchingPopup(scaleId)`: Anchors popup to clicked flow box
+- `closeBranchingPopup()`: Hides popup and clears input
+
+**Branching Popup:**
+- **Position:** Fixed, dynamically anchored to right of source flow box
+- **Trigger:** Click branch button on flow box hover tools
+- **Input:** Textarea for adaptation intent (currently bypassed for mock)
+- **Output:** Creates new scale with deterministic position
+
 
 **Dimension:**
 ```javascript

@@ -875,6 +875,7 @@
     },
 
     renderAll() {
+      console.trace('[Flow Render] renderAll() called');
       if (!this.boxesContainer) return;
       this.boxesContainer.innerHTML = '';
 
@@ -882,16 +883,16 @@
       console.log('[Flow Render] World transform:', this.worldLayer?.style.transform);
 
       state.canvasState.scales.forEach((scale) => {
-        // Initial positioning logic (optical vertical centering)
-        if (scale.parent_scale_id === null && !scale.__positionInitialized && this.canvas) {
+        // Auto-position ONLY if position is undefined AND not locked
+        if (!scale.position && !scale.positionLocked && this.canvas) {
           const canvasHeight = this.canvas.clientHeight || window.innerHeight;
-          const estimatedBoxHeight = 120; // Collapsed height
-          console.trace('[POSITION WRITE] Auto-positioning root scale:', scale.scale_id);
-          scale.position.y = (canvasHeight - estimatedBoxHeight) * 0.5;
-          scale.__positionInitialized = true;
-          console.log('[Flow Render] Auto-positioned root scale:', scale.scale_id, scale.position);
-        } else if (scale.parent_scale_id !== null) {
-          console.log('[Flow Render] Skipping auto-position for branched scale:', scale.scale_id, 'parent:', scale.parent_scale_id);
+          const estimatedBoxHeight = 120;
+          console.trace('[POSITION WRITE] Auto-positioning scale with undefined position:', scale.scale_id);
+          scale.position = {
+            x: 100,
+            y: (canvasHeight - estimatedBoxHeight) * 0.5
+          };
+          console.log('[Flow Render] Auto-positioned:', scale.scale_id, scale.position);
         }
 
         console.log('[Flow Render] Rendering scale:', scale.scale_id, 'at position:', scale.position);
@@ -921,6 +922,8 @@
         globalItemIndex += items.length;
         return html;
       }).join('');
+
+      console.log('[DOM APPLY]', scale.scale_id, 'position:', scale.position);
 
       return `
         <div class="flow-box flow-mode ${scale.expanded ? '' : 'flow-mode-collapsed'}"  
@@ -1269,7 +1272,7 @@
     },
 
     // Deterministic child-row positioning for branched scales
-    getNextBranchPosition(sourceScaleId) {
+    getNextBranchPosition(sourceScaleId, branch_index) {
       const HORIZONTAL_GAP = 450;     // Gap between parent and child column
       const VERTICAL_GAP = 24;        // Gap between sibling scales
       const ESTIMATED_HEIGHT = 180;   // Fixed estimated flowbox height
@@ -1279,17 +1282,35 @@
       if (!source) return { x: 100, y: 100, branch_index: 0 };
 
       // Count existing branches of this parent to determine next branch_index
-      const existingBranches = Array.from(state.canvasState.scales.values())
-        .filter(s => s.parent_scale_id === sourceScaleId);
+      // console.log('[Branch Position] Map size:', state.canvasState.scales.size);
+      // console.log('[Branch Position] Map keys:', Array.from(state.canvasState.scales.keys()));
 
-      const branch_index = existingBranches.length;
+      // const existingBranches = Array.from(state.canvasState.scales.values())
+      //   .filter(s => {
+      //     console.log('[Branch Position] Checking scale:', s.scale_id, 'parent:', s.parent_scale_id, 'vs', sourceScaleId);
+      //     return s.parent_scale_id === sourceScaleId;
+      //   });
+
+      // const branch_index = existingBranches.length;
 
       const baseX = source.position.x + HORIZONTAL_GAP;
-      const baseY = source.position.y + (branch_index * ROW_HEIGHT);
+      // First branch at index 0 should be at parent.y + ROW_HEIGHT (one row offset)
+      // To avoid overlap with parent, we place branches HORIZONTALLY offset
+      // The y-stacking is for SIBLINGS, not parent-child
+      const baseY = source.position.y + (branch_index + 1) * ROW_HEIGHT;
 
       console.log('[Branch Position] Parent:', sourceScaleId);
-      console.log('[Branch Position] Existing branches:', existingBranches.length);
-      console.log('[Branch Position] New branch_index:', branch_index);
+      // console.log('[Branch Position] All scales:', Array.from(state.canvasState.scales.values()).map(s => ({
+      //   id: s.scale_id,
+      //   parent: s.parent_scale_id
+      // })));
+      // console.log('[Branch Position] Existing branches:', existingBranches.length);
+      // console.log('[Branch Position] Existing branches details:', existingBranches.map(s => ({
+      //   id: s.scale_id,
+      //   parent: s.parent_scale_id,
+      //   position: s.position
+      // })));
+      console.log('[Branch Position] Branch index:', branch_index);
       console.log('[Branch Position] Computed position:', { x: baseX, y: baseY });
 
       return {
@@ -1323,13 +1344,16 @@
       console.log('[MLPA Branching] Source:', sourceScale.scale_name);
       console.log('[MLPA Branching] Intent:', adaptationIntent);
 
-      // Generate unique branch ID
+      // Generate unique branch ID and compute branch index
       const branchCount = Array.from(state.canvasState.scales.keys())
         .filter(id => id.startsWith(sourceScaleId + '-branch')).length + 1;
       const newScaleId = `${sourceScaleId}-branch-${branchCount}`;
+      const branch_index = branchCount - 1; // 0-indexed: first branch = 0, second = 1, etc.
 
-      // Compute layout-aware position
-      const newPosition = this.getNextBranchPosition(sourceScaleId);
+      console.log('[MLPA Branching] Branch count:', branchCount, 'Branch index:', branch_index);
+
+      // Compute layout-aware position using explicit branch_index
+      const newPosition = this.getNextBranchPosition(sourceScaleId, branch_index);
       console.log('[MLPA Branching] Computed position:', newPosition);
       console.log('[MLPA Branching] Source position:', sourceScale.position);
 
@@ -1344,6 +1368,7 @@
         expanded: false,
         branch_index: newPosition.branch_index,
         position: { x: newPosition.x, y: newPosition.y },
+        positionLocked: true, // Prevent auto-repositioning
         dimensions: [
           {
             name: 'Dimensi Stub A',
