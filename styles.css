@@ -472,6 +472,11 @@ body {
   flex-shrink: 0;
 }
 
+.nav-icon-img {
+  filter: invert(1);
+  /* Inverts black icon to white */
+}
+
 .nav-text {
   opacity: 1;
   transition: opacity var(--transition-fast);
@@ -659,6 +664,10 @@ body.preview-mode .preview-return {
 /* ==================== */
 
 .screen-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
   margin-bottom: var(--space-md);
   transition: opacity var(--transition-fast), visibility var(--transition-fast);
 }
@@ -667,11 +676,13 @@ body.preview-mode .preview-return {
   font-size: var(--font-size-lg);
   font-weight: var(--font-weight-semibold);
   color: var(--color-text);
-  margin-bottom: 16px;
+  margin: 0;
+  text-align: center;
 }
 
 .dropdown-wrapper {
-  display: inline-block;
+  display: flex;
+  justify-content: center;
 }
 
 .scale-dropdown {
@@ -1101,21 +1112,41 @@ body.is-fullscreen .fullscreen-btn .icon-compress {
   overflow: hidden;
 }
 
-/* Global Export Button */
+/* Hide preview toggle on Tampilan Edit screen */
+.main-content:has(#screen-3.active) .preview-toggle {
+  display: none;
+}
+
+/* Flow Screen Title */
+.flow-screen-title {
+  position: absolute;
+  top: var(--space-min);
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 17px;
+  /* 15% smaller than 20px */
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text);
+  letter-spacing: -0.01em;
+  z-index: 40;
+  margin: 0;
+}
+
+/* Global Export Button (Icon-only) */
 .global-export-btn {
   position: absolute;
   top: var(--space-min);
   right: var(--space-min);
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 16px;
-  background: var(--color-bg);
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  background: rgba(0, 0, 0, 0.04);
   border: 1px solid var(--color-border);
   border-radius: var(--border-radius-sm);
   color: var(--color-text);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
   cursor: pointer;
   z-index: 50;
   transition: all var(--transition-fast);
@@ -1123,12 +1154,50 @@ body.is-fullscreen .fullscreen-btn .icon-compress {
 
 .global-export-btn:hover {
   border-color: var(--color-border-hover);
-  background: var(--color-surface-hover);
+  background: rgba(0, 0, 0, 0.08);
+}
+
+.global-export-btn:active {
+  transform: scale(0.98);
 }
 
 .global-export-icon {
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
+}
+
+/* Global Export Tooltip */
+.global-export-tooltip {
+  position: absolute;
+  top: 50%;
+  right: calc(100% + 10px);
+  transform: translateY(-50%);
+  padding: 8px 12px;
+  background: rgba(0, 0, 0, 0.85);
+  color: #fff;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  white-space: nowrap;
+  border-radius: 6px;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity var(--transition-fast), visibility var(--transition-fast);
+}
+
+.global-export-tooltip::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 100%;
+  transform: translateY(-50%);
+  border: 6px solid transparent;
+  border-left-color: rgba(0, 0, 0, 0.85);
+}
+
+.global-export-btn:hover .global-export-tooltip {
+  opacity: 1;
+  visibility: visible;
 }
 
 /* Flow Canvas */

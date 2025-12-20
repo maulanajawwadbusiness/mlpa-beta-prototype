@@ -16,7 +16,33 @@ The **MLPA (Multi-Level Profiling Assessment)** prototype is a web-based tool de
 
 ---
 
-## 3. File Structure
+## 3. Project Structure
+
+```
+mlpa-beta-prototype/
+├── .git/                      # Git repository
+├── .gitignore                 # Git ignore rules
+├── assets/                    # Image assets
+│   ├── arrow_icon.png
+│   ├── branch_button_icon.png
+│   ├── drag_and_drop_icon.png
+│   ├── edit_icon.png
+│   ├── loading_icon.png
+│   ├── reset_icon.png
+│   ├── save_icon.png
+│   ├── sidebar_hide_icon.png
+│   ├── sidebar_show_icon.png
+│   └── tampilan_edit_icon.png
+├── index.html                 # Main HTML structure
+├── styles.css                 # Global styles and component CSS
+├── app.js                     # Application logic and Flow Editor
+├── api.js                     # OpenAI API abstraction layer
+├── config.js                  # Configuration (API keys)
+├── test-data.csv              # Mock psychometric data
+└── system.md                  # Technical documentation (this file)
+```
+
+### File Descriptions
 
 | File | Purpose |
 |------|---------|

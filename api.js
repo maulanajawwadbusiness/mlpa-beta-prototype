@@ -37,12 +37,20 @@ Instructions:
 Respond with the JSON object only.`
         }),
 
-        // V2: Dimensions + Items (text only) - rubrics filled by app
-        adaptScale: (sourceDimensions, adaptationIntent) => ({
+        // ============================================================================
+        // V2 SCHEMA LOCK: v2-generated-scale
+        // GPT returns: { scale_name, dimensions: [{ name, items: [{ text }] }] }
+        // App injects: item_id, origin_item_id, baseline_rubric, current_rubric, rubric_source
+        // DO NOT expand this schema without explicit version bump
+        // ============================================================================
+        adaptScale: (sourceScaleName, sourceDimensions, adaptationIntent) => ({
             role: 'user',
             content: `You are adapting a psychometric scale for a specific audience.
 
-SOURCE SCALE:
+SOURCE SCALE NAME:
+${sourceScaleName}
+
+SOURCE SCALE DIMENSIONS:
 ${JSON.stringify(sourceDimensions.map(d => ({
                 name: d.name,
                 items: d.items.map(i => i.text)
@@ -66,6 +74,9 @@ Return a JSON object with EXACTLY this structure:
 }
 
 Rules:
+- The source scale is called "${sourceScaleName}" - use this as context for naming the adapted scale
+- For the adapted scale_name, use a format like "[Adaptation Type] - [What it Measures]"
+- Example: if adapting for Gen-Z, name it "Skala Gen-Z - Skala Kepercayaan Diri"
 - Keep the same number of dimensions as the source
 - Keep the same number of items per dimension
 - Adapt dimension names and item texts to match the intent
@@ -186,14 +197,15 @@ Rules:
     }
 
     /**
-     * Adapt a scale for a specific audience (V1: dimensions only)
+     * Adapt a scale for a specific audience (V2: dimensions + items)
      * Uses Chat Completions API with JSON response format
+     * @param {string} sourceScaleName - Name of the source scale
      * @param {Array} sourceDimensions - Source scale dimensions
      * @param {string} adaptationIntent - User's adaptation intent
      * @param {string} [model='gpt-5-mini'] - Model to use
      * @returns {Promise<Object>} { scale_name, dimensions } or { error }
      */
-    async function adaptScale(sourceDimensions, adaptationIntent, model = 'gpt-5-mini') {
+    async function adaptScale(sourceScaleName, sourceDimensions, adaptationIntent, model = 'gpt-5-mini') {
         console.log(`[OpenAI API] Adapting scale with ${model}...`);
 
         if (!config.apiKey) {
@@ -206,7 +218,7 @@ Rules:
                 role: 'system',
                 content: 'You are adapting a psychometric scale. Return ONLY valid JSON, no explanation.'
             },
-            prompts.adaptScale(sourceDimensions, adaptationIntent)
+            prompts.adaptScale(sourceScaleName, sourceDimensions, adaptationIntent)
         ];
 
         try {

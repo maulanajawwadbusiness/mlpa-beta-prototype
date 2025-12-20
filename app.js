@@ -638,6 +638,7 @@
 
   // Mock items with proper structure (dual rubric, origin mapping)
   const MOCK_ITEMS = [
+    // === SKALA ASLI ===
     // Dimension 1: Kepercayaan Diri (items 1-3)
     {
       item_id: '1',
@@ -645,7 +646,8 @@
       text: 'Saya merasa percaya diri dalam menghadapi tantangan baru',
       baseline_rubric: ['Kepercayaan Diri', 'Menghadapi Tantangan Baru', 'Merasa', 'Sudut Pandang Orang Pertama'],
       current_rubric: ['Kepercayaan Diri', 'Menghadapi Tantangan Baru', 'Merasa', 'Sudut Pandang Orang Pertama'],
-      dimension: 'Kepercayaan Diri'
+      dimension: 'Kepercayaan Diri',
+      scale_group: 'asli'
     },
     {
       item_id: '2',
@@ -653,7 +655,8 @@
       text: 'Saya merasa bernilai dan dihargai oleh orang lain',
       baseline_rubric: ['Nilai Diri', 'Dihargai oleh Orang Lain', 'Merasa', 'Sudut Pandang Orang Pertama'],
       current_rubric: ['Nilai Diri', 'Dihargai oleh Orang Lain', 'Merasa', 'Sudut Pandang Orang Pertama'],
-      dimension: 'Kepercayaan Diri'
+      dimension: 'Kepercayaan Diri',
+      scale_group: 'asli'
     },
     {
       item_id: '3',
@@ -661,7 +664,8 @@
       text: 'Saya dapat mengatasi masalah dengan baik dan tenang',
       baseline_rubric: ['Kemampuan Mengatasi Masalah', 'Ketenangan', 'Kemampuan (Dapat)', 'Sudut Pandang Orang Pertama'],
       current_rubric: ['Kemampuan Mengatasi Masalah', 'Ketenangan', 'Kemampuan (Dapat)', 'Sudut Pandang Orang Pertama'],
-      dimension: 'Kepercayaan Diri'
+      dimension: 'Kepercayaan Diri',
+      scale_group: 'asli'
     },
     // Dimension 2: Regulasi Emosi (items 4-7)
     {
@@ -670,7 +674,8 @@
       text: 'Saya mampu mengekspresikan perasaan saya dengan jelas',
       baseline_rubric: ['Ekspresi Perasaan', 'Kejelasan', 'Kemampuan (Mampu)', 'Sudut Pandang Orang Pertama'],
       current_rubric: ['Ekspresi Perasaan', 'Kejelasan', 'Kemampuan (Mampu)', 'Sudut Pandang Orang Pertama'],
-      dimension: 'Regulasi Emosi'
+      dimension: 'Regulasi Emosi',
+      scale_group: 'asli'
     },
     {
       item_id: '5',
@@ -678,7 +683,8 @@
       text: 'Saya merasa nyaman ketika berinteraksi dengan orang baru',
       baseline_rubric: ['Kenyamanan', 'Interaksi dengan Orang Baru', 'Merasa', 'Sudut Pandang Orang Pertama'],
       current_rubric: ['Kenyamanan', 'Interaksi dengan Orang Baru', 'Merasa', 'Sudut Pandang Orang Pertama'],
-      dimension: 'Regulasi Emosi'
+      dimension: 'Regulasi Emosi',
+      scale_group: 'asli'
     },
     {
       item_id: '6',
@@ -686,7 +692,8 @@
       text: 'Saya dapat menerima kritik dengan sikap terbuka',
       baseline_rubric: ['Penerimaan Kritik', 'Keterbukaan Sikap', 'Kemampuan (Dapat)', 'Sudut Pandang Orang Pertama'],
       current_rubric: ['Penerimaan Kritik', 'Keterbukaan Sikap', 'Kemampuan (Dapat)', 'Sudut Pandang Orang Pertama'],
-      dimension: 'Regulasi Emosi'
+      dimension: 'Regulasi Emosi',
+      scale_group: 'asli'
     },
     {
       item_id: '7',
@@ -694,7 +701,8 @@
       text: 'Saya mampu mengelola stres dengan efektif',
       baseline_rubric: ['Pengelolaan Stres', 'Efektivitas', 'Kemampuan (Mampu)', 'Sudut Pandang Orang Pertama'],
       current_rubric: ['Pengelolaan Stres', 'Efektivitas', 'Kemampuan (Mampu)', 'Sudut Pandang Orang Pertama'],
-      dimension: 'Regulasi Emosi'
+      dimension: 'Regulasi Emosi',
+      scale_group: 'asli'
     },
     // Dimension 3: Optimisme (items 8-10)
     {
@@ -703,7 +711,8 @@
       text: 'Saya merasa optimis tentang masa depan saya',
       baseline_rubric: ['Optimisme', 'Masa Depan Diri', 'Merasa', 'Sudut Pandang Orang Pertama'],
       current_rubric: ['Optimisme', 'Masa Depan Diri', 'Merasa', 'Sudut Pandang Orang Pertama'],
-      dimension: 'Optimisme'
+      dimension: 'Optimisme',
+      scale_group: 'asli'
     },
     {
       item_id: '9',
@@ -711,7 +720,8 @@
       text: 'Saya merasa puas dengan pencapaian hidup saya sejauh ini',
       baseline_rubric: ['Kepuasan', 'Pencapaian Hidup', 'Merasa', 'Sudut Pandang Orang Pertama', 'Waktu: Sejauh Ini'],
       current_rubric: ['Kepuasan', 'Pencapaian Hidup', 'Merasa', 'Sudut Pandang Orang Pertama', 'Waktu: Sejauh Ini'],
-      dimension: 'Optimisme'
+      dimension: 'Optimisme',
+      scale_group: 'asli'
     },
     {
       item_id: '10',
@@ -719,26 +729,221 @@
       text: 'Saya merasa memiliki tujuan hidup yang jelas',
       baseline_rubric: ['Tujuan Hidup', 'Kejelasan Tujuan', 'Merasa', 'Sudut Pandang Orang Pertama'],
       current_rubric: ['Tujuan Hidup', 'Kejelasan Tujuan', 'Merasa', 'Sudut Pandang Orang Pertama'],
-      dimension: 'Optimisme'
+      dimension: 'Optimisme',
+      scale_group: 'asli'
+    },
+
+    // === SKALA GEN-Z (Branch 1) ===
+    // Dimension 1
+    {
+      item_id: 'skala-asli-branch-1-item-1',
+      origin_item_id: '1',
+      text: 'Saya berani mencoba hal baru tanpa ragu',
+      baseline_rubric: ['Kepercayaan Diri', 'Menghadapi Tantangan Baru', 'Merasa', 'Sudut Pandang Orang Pertama'],
+      current_rubric: ['Kepercayaan Diri', 'Menghadapi Tantangan Baru', 'Merasa', 'Sudut Pandang Orang Pertama'],
+      dimension: 'Kepercayaan Diri & Keberanian',
+      scale_group: 'genz'
+    },
+    {
+      item_id: 'skala-asli-branch-1-item-2',
+      origin_item_id: '2',
+      text: 'Saya merasa dihargai dan berarti di lingkungan saya',
+      baseline_rubric: ['Nilai Diri', 'Dihargai oleh Orang Lain', 'Merasa', 'Sudut Pandang Orang Pertama'],
+      current_rubric: ['Nilai Diri', 'Dihargai oleh Orang Lain', 'Merasa', 'Sudut Pandang Orang Pertama'],
+      dimension: 'Kepercayaan Diri & Keberanian',
+      scale_group: 'genz'
+    },
+    {
+      item_id: 'skala-asli-branch-1-item-3',
+      origin_item_id: '3',
+      text: 'Saya bisa mengatasi masalah dengan kepala dingin dan percaya diri',
+      baseline_rubric: ['Kemampuan Mengatasi Masalah', 'Ketenangan', 'Kemampuan (Dapat)', 'Sudut Pandang Orang Pertama'],
+      current_rubric: ['Kemampuan Mengatasi Masalah', 'Ketenangan', 'Kemampuan (Dapat)', 'Sudut Pandang Orang Pertama'],
+      dimension: 'Kepercayaan Diri & Keberanian',
+      scale_group: 'genz'
+    },
+    // Dimension 2
+    {
+      item_id: 'skala-asli-branch-1-item-4',
+      origin_item_id: '4',
+      text: 'Saya bisa mengekspresikan perasaan saya secara jujur dan jelas',
+      baseline_rubric: ['Ekspresi Perasaan', 'Kejelasan', 'Kemampuan (Mampu)', 'Sudut Pandang Orang Pertama'],
+      current_rubric: ['Ekspresi Perasaan', 'Kejelasan', 'Kemampuan (Mampu)', 'Sudut Pandang Orang Pertama'],
+      dimension: 'Regulasi Emosi & Interaksi',
+      scale_group: 'genz'
+    },
+    {
+      item_id: 'skala-asli-branch-1-item-5',
+      origin_item_id: '5',
+      text: 'Saya merasa nyaman dan tidak awkward saat bertemu orang baru',
+      baseline_rubric: ['Kenyamanan', 'Interaksi dengan Orang Baru', 'Merasa', 'Sudut Pandang Orang Pertama'],
+      current_rubric: ['Kenyamanan', 'Interaksi dengan Orang Baru', 'Merasa', 'Sudut Pandang Orang Pertama'],
+      dimension: 'Regulasi Emosi & Interaksi',
+      scale_group: 'genz'
+    },
+    {
+      item_id: 'skala-asli-branch-1-item-6',
+      origin_item_id: '6',
+      text: 'Saya bisa menerima kritik tanpa baper dan belajar darinya',
+      baseline_rubric: ['Penerimaan Kritik', 'Keterbukaan Sikap', 'Kemampuan (Dapat)', 'Sudut Pandang Orang Pertama'],
+      current_rubric: ['Penerimaan Kritik', 'Keterbukaan Sikap', 'Kemampuan (Dapat)', 'Sudut Pandang Orang Pertama'],
+      dimension: 'Regulasi Emosi & Interaksi',
+      scale_group: 'genz'
+    },
+    {
+      item_id: 'skala-asli-branch-1-item-7',
+      origin_item_id: '7',
+      text: 'Saya mampu mengatur stres agar tidak merasa overwhelmed',
+      baseline_rubric: ['Pengelolaan Stres', 'Efektivitas', 'Kemampuan (Mampu)', 'Sudut Pandang Orang Pertama'],
+      current_rubric: ['Pengelolaan Stres', 'Efektivitas', 'Kemampuan (Mampu)', 'Sudut Pandang Orang Pertama'],
+      dimension: 'Regulasi Emosi & Interaksi',
+      scale_group: 'genz'
+    },
+    // Dimension 3
+    {
+      item_id: 'skala-asli-branch-1-item-8',
+      origin_item_id: '8',
+      text: 'Saya optimis tentang masa depan dan peluang yang akan datang',
+      baseline_rubric: ['Optimisme', 'Masa Depan Diri', 'Merasa', 'Sudut Pandang Orang Pertama'],
+      current_rubric: ['Optimisme', 'Masa Depan Diri', 'Merasa', 'Sudut Pandang Orang Pertama'],
+      dimension: 'Optimisme dan Tujuan (Goals)',
+      scale_group: 'genz'
+    },
+    {
+      item_id: 'skala-asli-branch-1-item-9',
+      origin_item_id: '9',
+      text: 'Saya merasa bangga dan puas dengan pencapaian saya sejauh ini',
+      baseline_rubric: ['Kepuasan', 'Pencapaian Hidup', 'Merasa', 'Sudut Pandang Orang Pertama', 'Waktu: Sejauh Ini'],
+      current_rubric: ['Kepuasan', 'Pencapaian Hidup', 'Merasa', 'Sudut Pandang Orang Pertama', 'Waktu: Sejauh Ini'],
+      dimension: 'Optimisme dan Tujuan (Goals)',
+      scale_group: 'genz'
+    },
+    {
+      item_id: 'skala-asli-branch-1-item-10',
+      origin_item_id: '10',
+      text: 'Saya memiliki tujuan hidup atau goals yang jelas untuk dicapai',
+      baseline_rubric: ['Tujuan Hidup', 'Kejelasan Tujuan', 'Merasa', 'Sudut Pandang Orang Pertama'],
+      current_rubric: ['Tujuan Hidup', 'Kejelasan Tujuan', 'Merasa', 'Sudut Pandang Orang Pertama'],
+      dimension: 'Optimisme dan Tujuan (Goals)',
+      scale_group: 'genz'
+    },
+
+    // === SKALA BOOMER (Branch 2) ===
+    // Dimension 1
+    {
+      item_id: 'skala-asli-branch-2-item-1',
+      origin_item_id: '1',
+      text: 'Saya merasa percaya diri menghadapi perubahan dan tantangan yang muncul pada usia saya',
+      baseline_rubric: ['Kepercayaan Diri', 'Menghadapi Tantangan Baru', 'Merasa', 'Sudut Pandang Orang Pertama'],
+      current_rubric: ['Kepercayaan Diri', 'Menghadapi Tantangan Baru', 'Merasa', 'Sudut Pandang Orang Pertama'],
+      dimension: 'Kepercayaan Diri pada Usia Boomer',
+      scale_group: 'boomer'
+    },
+    {
+      item_id: 'skala-asli-branch-2-item-2',
+      origin_item_id: '2',
+      text: 'Saya merasa dihargai dan dianggap berarti oleh keluarga dan komunitas saya',
+      baseline_rubric: ['Nilai Diri', 'Dihargai oleh Orang Lain', 'Merasa', 'Sudut Pandang Orang Pertama'],
+      current_rubric: ['Nilai Diri', 'Dihargai oleh Orang Lain', 'Merasa', 'Sudut Pandang Orang Pertama'],
+      dimension: 'Kepercayaan Diri pada Usia Boomer',
+      scale_group: 'boomer'
+    },
+    {
+      item_id: 'skala-asli-branch-2-item-3',
+      origin_item_id: '3',
+      text: 'Saya mampu menyelesaikan masalah sehari-hari dan menghadapi situasi sulit dengan tenang',
+      baseline_rubric: ['Kemampuan Mengatasi Masalah', 'Ketenangan', 'Kemampuan (Dapat)', 'Sudut Pandang Orang Pertama'],
+      current_rubric: ['Kemampuan Mengatasi Masalah', 'Ketenangan', 'Kemampuan (Dapat)', 'Sudut Pandang Orang Pertama'],
+      dimension: 'Kepercayaan Diri pada Usia Boomer',
+      scale_group: 'boomer'
+    },
+    // Dimension 2
+    {
+      item_id: 'skala-asli-branch-2-item-4',
+      origin_item_id: '4',
+      text: 'Saya dapat mengungkapkan perasaan saya kepada keluarga atau teman dengan jujur dan tepat',
+      baseline_rubric: ['Ekspresi Perasaan', 'Kejelasan', 'Kemampuan (Mampu)', 'Sudut Pandang Orang Pertama'],
+      current_rubric: ['Ekspresi Perasaan', 'Kejelasan', 'Kemampuan (Mampu)', 'Sudut Pandang Orang Pertama'],
+      dimension: 'Regulasi Emosi dan Interaksi Sosial',
+      scale_group: 'boomer'
+    },
+    {
+      item_id: 'skala-asli-branch-2-item-5',
+      origin_item_id: '5',
+      text: 'Saya merasa nyaman saat berinteraksi dengan orang baru, termasuk yang berasal dari generasi berbeda',
+      baseline_rubric: ['Kenyamanan', 'Interaksi dengan Orang Baru', 'Merasa', 'Sudut Pandang Orang Pertama'],
+      current_rubric: ['Kenyamanan', 'Interaksi dengan Orang Baru', 'Merasa', 'Sudut Pandang Orang Pertama'],
+      dimension: 'Regulasi Emosi dan Interaksi Sosial',
+      scale_group: 'boomer'
+    },
+    {
+      item_id: 'skala-asli-branch-2-item-6',
+      origin_item_id: '6',
+      text: 'Saya menerima masukan atau kritik dari orang lain dengan sikap terbuka dan bijaksana',
+      baseline_rubric: ['Penerimaan Kritik', 'Keterbukaan Sikap', 'Kemampuan (Dapat)', 'Sudut Pandang Orang Pertama'],
+      current_rubric: ['Penerimaan Kritik', 'Keterbukaan Sikap', 'Kemampuan (Dapat)', 'Sudut Pandang Orang Pertama'],
+      dimension: 'Regulasi Emosi dan Interaksi Sosial',
+      scale_group: 'boomer'
+    },
+    {
+      item_id: 'skala-asli-branch-2-item-7',
+      origin_item_id: '7',
+      text: 'Saya mampu mengelola stres terkait kesehatan, tanggung jawab keluarga, atau perubahan hidup secara efektif',
+      baseline_rubric: ['Pengelolaan Stres', 'Efektivitas', 'Kemampuan (Mampu)', 'Sudut Pandang Orang Pertama'],
+      current_rubric: ['Pengelolaan Stres', 'Efektivitas', 'Kemampuan (Mampu)', 'Sudut Pandang Orang Pertama'],
+      dimension: 'Regulasi Emosi dan Interaksi Sosial',
+      scale_group: 'boomer'
+    },
+    // Dimension 3
+    {
+      item_id: 'skala-asli-branch-2-item-8',
+      origin_item_id: '8',
+      text: 'Saya merasa optimis tentang kualitas hidup dan kesejahteraan saya di masa mendatang',
+      baseline_rubric: ['Optimisme', 'Masa Depan Diri', 'Merasa', 'Sudut Pandang Orang Pertama'],
+      current_rubric: ['Optimisme', 'Masa Depan Diri', 'Merasa', 'Sudut Pandang Orang Pertama'],
+      dimension: 'Optimisme dan Makna Hidup',
+      scale_group: 'boomer'
+    },
+    {
+      item_id: 'skala-asli-branch-2-item-9',
+      origin_item_id: '9',
+      text: 'Saya merasa puas dan bangga dengan pencapaian hidup serta peran yang telah saya jalani',
+      baseline_rubric: ['Kepuasan', 'Pencapaian Hidup', 'Merasa', 'Sudut Pandang Orang Pertama', 'Waktu: Sejauh Ini'],
+      current_rubric: ['Kepuasan', 'Pencapaian Hidup', 'Merasa', 'Sudut Pandang Orang Pertama', 'Waktu: Sejauh Ini'],
+      dimension: 'Optimisme dan Makna Hidup',
+      scale_group: 'boomer'
+    },
+    {
+      item_id: 'skala-asli-branch-2-item-10',
+      origin_item_id: '10',
+      text: 'Saya memiliki tujuan atau kegiatan yang memberi arti dan semangat pada kehidupan saya saat ini',
+      baseline_rubric: ['Tujuan Hidup', 'Kejelasan Tujuan', 'Merasa', 'Sudut Pandang Orang Pertama'],
+      current_rubric: ['Tujuan Hidup', 'Kejelasan Tujuan', 'Merasa', 'Sudut Pandang Orang Pertama'],
+      dimension: 'Optimisme dan Makna Hidup',
+      scale_group: 'boomer'
     }
   ];
 
   // Mock scale structure
+  // Mock scale structure (Root only)
   function createMockScale() {
+    // Filter items for Asli
+    const itemsAsli = MOCK_ITEMS.filter(i => i.scale_group === 'asli');
+
     // Group items by dimension
     const dimensions = [
-      { name: 'Kepercayaan Diri', items: MOCK_ITEMS.filter(i => i.dimension === 'Kepercayaan Diri') },
-      { name: 'Regulasi Emosi', items: MOCK_ITEMS.filter(i => i.dimension === 'Regulasi Emosi') },
-      { name: 'Optimisme', items: MOCK_ITEMS.filter(i => i.dimension === 'Optimisme') }
+      { name: 'Kepercayaan Diri', items: itemsAsli.filter(i => i.dimension === 'Kepercayaan Diri') },
+      { name: 'Regulasi Emosi', items: itemsAsli.filter(i => i.dimension === 'Regulasi Emosi') },
+      { name: 'Optimisme', items: itemsAsli.filter(i => i.dimension === 'Optimisme') }
     ];
 
     return {
       scale_id: 'skala-asli',
-      scale_name: 'Skala Asli',
+      scale_name: 'Skala Asli - Skala Kepercayaan Diri',
       parent_scale_id: null,
       is_root: true,
       expanded: false,
-      depth: 0,  // Root is depth 0
+      depth: 0,
       position: { x: 100, y: 250 },
       dimensions: dimensions
     };
@@ -747,13 +952,60 @@
   function handleLoadMock() {
     console.log('[MLPA] Loading mock data for testing...');
 
-    // Create mock scale and add to canvas state
-    const mockScale = createMockScale();
-    state.canvasState.scales.set(mockScale.scale_id, mockScale);
-    state.canvasState.activeScaleId = mockScale.scale_id;
+    // 1. Create and set Root Scale
+    const rootScale = createMockScale();
+    state.canvasState.scales.set(rootScale.scale_id, rootScale);
+    state.canvasState.activeScaleId = rootScale.scale_id;
 
-    // Flatten items for questionnaire preview (legacy support)
-    state.items = MOCK_ITEMS.map(item => ({
+    // 2. Create Gen-Z Branch (Branch 1) - Using standard layout logic
+    const genzPos = flowEditor.getNextBranchPosition(rootScale.scale_id, 0);
+    const itemsGenz = MOCK_ITEMS.filter(i => i.scale_group === 'genz');
+    const dimsGenz = [
+      { name: 'Kepercayaan Diri & Keberanian', items: itemsGenz.filter(i => i.dimension === 'Kepercayaan Diri & Keberanian') },
+      { name: 'Regulasi Emosi & Interaksi', items: itemsGenz.filter(i => i.dimension === 'Regulasi Emosi & Interaksi') },
+      { name: 'Optimisme dan Tujuan (Goals)', items: itemsGenz.filter(i => i.dimension === 'Optimisme dan Tujuan (Goals)') }
+    ];
+
+    const genzScale = {
+      scale_id: 'skala-genz',
+      scale_name: 'Skala Gen-Z - Skala Kepercayaan Diri',
+      parent_scale_id: rootScale.scale_id,
+      is_root: false,
+      expanded: false,
+      depth: genzPos.depth,
+      branch_index: genzPos.branch_index,
+      position: { x: genzPos.x, y: genzPos.y },
+      positionLocked: true,
+      dimensions: dimsGenz
+    };
+    state.canvasState.scales.set(genzScale.scale_id, genzScale);
+
+    // 3. Create Boomer Branch (Branch 2) - Using standard layout logic
+    const boomerPos = flowEditor.getNextBranchPosition(rootScale.scale_id, 1);
+    const itemsBoomer = MOCK_ITEMS.filter(i => i.scale_group === 'boomer');
+    const dimsBoomer = [
+      { name: 'Kepercayaan Diri pada Usia Boomer', items: itemsBoomer.filter(i => i.dimension === 'Kepercayaan Diri pada Usia Boomer') },
+      { name: 'Regulasi Emosi dan Interaksi Sosial', items: itemsBoomer.filter(i => i.dimension === 'Regulasi Emosi dan Interaksi Sosial') },
+      { name: 'Optimisme dan Makna Hidup', items: itemsBoomer.filter(i => i.dimension === 'Optimisme dan Makna Hidup') }
+    ];
+
+    const boomerScale = {
+      scale_id: 'skala-boomer',
+      scale_name: 'Skala Boomer - Skala Kepercayaan Diri',
+      parent_scale_id: rootScale.scale_id,
+      is_root: false,
+      expanded: false,
+      depth: boomerPos.depth,
+      branch_index: boomerPos.branch_index,
+      position: { x: boomerPos.x, y: boomerPos.y },
+      positionLocked: true,
+      dimensions: dimsBoomer
+    };
+    state.canvasState.scales.set(boomerScale.scale_id, boomerScale);
+
+    // Flatten items for questionnaire preview (Root only)
+    const itemsAsli = MOCK_ITEMS.filter(i => i.scale_group === 'asli');
+    state.items = itemsAsli.map(item => ({
       item_id: item.item_id,
       item_text: item.text
     }));
@@ -764,7 +1016,7 @@
       rawRowCount: state.items.length
     };
 
-    console.log('[MLPA] Mock data loaded:', state.items.length, 'items in', mockScale.dimensions.length, 'dimensions');
+    console.log('[MLPA] Mock data loaded: Root + 2 Branches');
 
     // Initialize questionnaire
     initQuestionnaire();
@@ -933,6 +1185,13 @@
             <button class="flow-tool-btn export-btn" title="Simpan sebagai CSV">
               <img src="assets/save_icon.png" alt="Export">
             </button>
+            ${!scale.is_root ? `
+            <button class="flow-tool-btn delete-btn" title="Hapus Skala">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="3 6 5 6 21 6"></polyline>
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+              </svg>
+            </button>` : ''}
             <button class="flow-tool-btn branch-btn" title="Cabangkan ke Versi Baru">
               <img src="assets/branch_button_icon.png" alt="Branch">
             </button>
@@ -1135,6 +1394,16 @@
           const flowBox = e.target.closest('.flow-box');
           const scaleId = flowBox.dataset.scaleId;
           this.exportScale(scaleId);
+        });
+      });
+
+      // Delete button
+      document.querySelectorAll('.flow-box-tools .delete-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const flowBox = e.target.closest('.flow-box');
+          const scaleId = flowBox.dataset.scaleId;
+          this.handleDeleteScale(scaleId);
         });
       });
 
@@ -1364,9 +1633,29 @@
         }
       }
 
-      // Warn if dimension count mismatch (but don't fail)
-      if (sourceScale && gptResult.dimensions.length !== sourceScale.dimensions.length) {
-        console.warn(`[MLPA Branching] Dimension count mismatch: source=${sourceScale.dimensions.length}, gpt=${gptResult.dimensions.length}`);
+      // ============================================================================
+      // SAFETY INVARIANT: Dimension and item count checks (warn only, don't fail)
+      // ============================================================================
+      if (sourceScale) {
+        // Check dimension count
+        if (gptResult.dimensions.length !== sourceScale.dimensions.length) {
+          console.warn(
+            `[MLPA Safety] Dimension count mismatch: ` +
+            `expected=${sourceScale.dimensions.length}, got=${gptResult.dimensions.length}`
+          );
+        }
+
+        // Check item count per dimension
+        for (let i = 0; i < Math.min(gptResult.dimensions.length, sourceScale.dimensions.length); i++) {
+          const gptDim = gptResult.dimensions[i];
+          const sourceDim = sourceScale.dimensions[i];
+          if (gptDim.items.length !== sourceDim.items.length) {
+            console.warn(
+              `[MLPA Safety] Item count mismatch in dimension "${gptDim.name}": ` +
+              `expected=${sourceDim.items.length}, got=${gptDim.items.length}`
+            );
+          }
+        }
       }
 
       return { valid: true };
@@ -1384,10 +1673,7 @@
       return gptDimensions.map((dim, dimIndex) => {
         const sourceItems = sourceDimensions[dimIndex]?.items || [];
 
-        // Warn if item count mismatch
-        if (dim.items.length !== sourceItems.length) {
-          console.warn(`[MLPA Branching] Item count mismatch in "${dim.name}": source=${sourceItems.length}, gpt=${dim.items.length}`);
-        }
+        // Warn if item count mismatch (removed - now in validateGptScale)
 
         return {
           name: dim.name,
@@ -1397,7 +1683,9 @@
             text: item.text,
             baseline_rubric: sourceItems[itemIndex]?.baseline_rubric || ['Mock Rubric'],
             current_rubric: sourceItems[itemIndex]?.baseline_rubric || ['Mock Rubric'],
-            dimension: dim.name
+            dimension: dim.name,
+            // Rubric source tracking (future: "gpt", "manual", "edited", "imported")
+            rubric_source: 'parent'  // V2: copied from parent scale
           }))
         };
       });
@@ -1442,7 +1730,7 @@
       try {
         // Call GPT to adapt dimensions
         console.log('[MLPA Branching] Calling GPT for adaptation...');
-        const gptResult = await OpenAIAPI.adaptScale(sourceScale.dimensions, adaptationIntent);
+        const gptResult = await OpenAIAPI.adaptScale(sourceScale.scale_name, sourceScale.dimensions, adaptationIntent);
 
         // Validate GPT response (V2: includes items)
         const validation = this.validateGptScale(gptResult, sourceScale);
@@ -1590,7 +1878,62 @@
         });
       });
 
-      this.downloadCSV(rows, 'MLPA_All_Scales.csv');
+      this.downloadCSV(rows, 'MLPA_Semua_Skala.csv');
+    },
+
+    // ============================================================================
+    // DELETE SCALE LOGIC (Cascade)
+    // ============================================================================
+    handleDeleteScale(scaleId) {
+      if (!scaleId) return;
+      const scale = state.canvasState.scales.get(scaleId);
+      if (!scale) return;
+
+      // 1. Root Protection
+      if (scale.is_root) {
+        alert('Skala utama (Root) tidak dapat dihapus.');
+        return;
+      }
+
+      // 2. Cascade Collection
+      // Find all descendants recursively
+      const toDelete = new Set([scaleId]);
+
+      let modified = true;
+      while (modified) {
+        modified = false;
+        // Iterate all scales to find children of any currently marked-for-deletion scale
+        for (const [sId, s] of state.canvasState.scales) {
+          if (!toDelete.has(sId) && s.parent_scale_id && toDelete.has(s.parent_scale_id)) {
+            toDelete.add(sId);
+            modified = true;
+          }
+        }
+      }
+
+      // 3. Confirmation
+      const count = toDelete.size;
+      const message = count > 1
+        ? `Apakah Anda yakin ingin menghapus skala ini dan ${count - 1} turunannya?`
+        : `Apakah Anda yakin ingin menghapus skala ini?`;
+
+      if (!confirm(message)) return;
+
+      // 4. Execution
+      this.closeBranchingPopup();
+
+      toDelete.forEach(id => {
+        state.canvasState.scales.delete(id);
+        // Reset active ID if we deleted it
+        if (state.canvasState.activeScaleId === id) {
+          state.canvasState.activeScaleId = null;
+        }
+      });
+
+      console.log(`[MLPA] Deleted ${count} scales via cascade.`);
+
+      // 5. Render (No reflow)
+      this.renderAll();
     },
 
     exportScale(scaleId) {
