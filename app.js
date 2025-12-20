@@ -25,6 +25,7 @@
     currentItemIndex: 0,
     answers: {},
     isCompleted: false,
+    selectedScaleId: null,  // Currently selected scale for preview
 
     // Canvas state (for Tampilan Edit)
     canvasState: {
@@ -123,6 +124,15 @@
     // Preview return button
     elements.previewReturn = document.getElementById('preview-return');
 
+    // Scale selector
+    elements.scaleSelectorBtn = document.getElementById('scale-selector-btn');
+    elements.scaleSelectorLabel = document.getElementById('scale-selector-label');
+    elements.scaleSelectorModal = document.getElementById('scale-selector-modal');
+    elements.scaleSelectorClose = document.getElementById('scale-selector-close');
+    elements.scaleSelectorBackdrop = document.querySelector('.scale-selector-backdrop');
+    elements.scaleSelectorNodes = document.getElementById('scale-selector-nodes');
+    elements.scaleSelectorConnections = document.getElementById('scale-selector-connections');
+
     // Inner screens
     elements.innerScreens = document.querySelectorAll('.inner-screen');
   }
@@ -199,6 +209,23 @@
     if (elements.resetBtn) {
       elements.resetBtn.addEventListener('click', resetQuestionnaire);
     }
+
+    // Scale selector
+    if (elements.scaleSelectorBtn) {
+      elements.scaleSelectorBtn.addEventListener('click', openScaleSelector);
+    }
+    if (elements.scaleSelectorClose) {
+      elements.scaleSelectorClose.addEventListener('click', closeScaleSelector);
+    }
+    if (elements.scaleSelectorBackdrop) {
+      elements.scaleSelectorBackdrop.addEventListener('click', closeScaleSelector);
+    }
+    // Escape key to close modal
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && elements.scaleSelectorModal?.classList.contains('open')) {
+        closeScaleSelector();
+      }
+    });
 
     // Fullscreen change event
     document.addEventListener('fullscreenchange', updateFullscreenState);
@@ -634,6 +661,167 @@
     console.log('[MLPA] Questionnaire reset complete');
   }
 
+  // ==================== SCALE SELECTOR ====================
+
+  function openScaleSelector() {
+    if (!elements.scaleSelectorModal) return;
+
+    // Render the graph before opening
+    renderScaleSelectorGraph();
+
+    // Open modal
+    elements.scaleSelectorModal.classList.add('open');
+    elements.scaleSelectorBtn?.classList.add('open');
+  }
+
+  function closeScaleSelector() {
+    if (!elements.scaleSelectorModal) return;
+
+    elements.scaleSelectorModal.classList.remove('open');
+    elements.scaleSelectorBtn?.classList.remove('open');
+  }
+
+  function renderScaleSelectorGraph() {
+    if (!elements.scaleSelectorNodes || !elements.scaleSelectorConnections) return;
+
+    const scales = state.canvasState.scales;
+    if (scales.size === 0) {
+      elements.scaleSelectorNodes.innerHTML = '<p style="color: var(--color-text-muted); text-align: center;">Tidak ada skala tersedia</p>';
+      elements.scaleSelectorConnections.innerHTML = '';
+      return;
+    }
+
+    // Build tree structure from parent_scale_id relationships
+    const tree = buildScaleTree(scales);
+
+    // Render nodes with tree layout (indentation based on depth)
+    let nodesHtml = '';
+    const nodePositions = new Map(); // For connector rendering
+    let nodeIndex = 0;
+
+    function renderNode(scaleId, depth) {
+      const scale = scales.get(scaleId);
+      if (!scale) return;
+
+      const isSelected = state.selectedScaleId === scaleId;
+      const indent = depth * 32; // 32px indent per depth level
+
+      nodesHtml += `
+        <div class="scale-node ${isSelected ? 'selected' : ''}" 
+             data-scale-id="${scaleId}" 
+             style="margin-left: ${indent}px;">
+          <span class="scale-node-dot"></span>
+          <span class="scale-node-name">${scale.scale_name}</span>
+          ${depth > 0 ? `<span class="scale-node-depth">Cabang</span>` : '<span class="scale-node-depth">Asal</span>'}
+        </div>
+      `;
+
+      nodePositions.set(scaleId, { index: nodeIndex, depth });
+      nodeIndex++;
+
+      // Render children
+      const children = tree.get(scaleId) || [];
+      children.forEach(childId => renderNode(childId, depth + 1));
+    }
+
+    // Find root nodes (no parent or parent not in scales)
+    const roots = [];
+    for (const [id, scale] of scales) {
+      if (!scale.parent_scale_id || !scales.has(scale.parent_scale_id)) {
+        roots.push(id);
+      }
+    }
+
+    // Render from each root
+    roots.forEach(rootId => renderNode(rootId, 0));
+
+    elements.scaleSelectorNodes.innerHTML = nodesHtml;
+
+    // Bind click events to nodes
+    elements.scaleSelectorNodes.querySelectorAll('.scale-node').forEach(node => {
+      node.addEventListener('click', () => {
+        const scaleId = node.dataset.scaleId;
+        selectScale(scaleId);
+      });
+    });
+
+    // Render simple vertical connectors (optional, can be enhanced)
+    // For simplicity, we'll skip SVG connectors and rely on indentation
+    elements.scaleSelectorConnections.innerHTML = '';
+  }
+
+  function buildScaleTree(scales) {
+    // Map of parent_scale_id -> [child_scale_ids]
+    const tree = new Map();
+
+    for (const [id, scale] of scales) {
+      if (scale.parent_scale_id) {
+        if (!tree.has(scale.parent_scale_id)) {
+          tree.set(scale.parent_scale_id, []);
+        }
+        tree.get(scale.parent_scale_id).push(id);
+      }
+    }
+
+    return tree;
+  }
+
+  function selectScale(scaleId) {
+    if (!scaleId) return;
+
+    const scale = state.canvasState.scales.get(scaleId);
+    if (!scale) {
+      console.warn('[MLPA] Scale not found:', scaleId);
+      return;
+    }
+
+    console.log('[MLPA] Selecting scale:', scale.scale_name);
+
+    // Update state
+    state.selectedScaleId = scaleId;
+
+    // Update button label
+    if (elements.scaleSelectorLabel) {
+      elements.scaleSelectorLabel.textContent = scale.scale_name;
+    }
+
+    // Extract items from selected scale and set for questionnaire
+    state.items = getScaleItems(scale);
+    state.currentItemIndex = 0;
+    state.answers = {};
+    state.isCompleted = false;
+
+    // Refresh questionnaire UI
+    elements.completion?.classList.add('hidden');
+    elements.questionnaire?.classList.remove('hidden');
+    updateQuestionnaireUI();
+
+    // Close the selector modal
+    closeScaleSelector();
+
+    console.log('[MLPA] Scale selected, items loaded:', state.items.length);
+  }
+
+  function getScaleItems(scale) {
+    // Flatten all items from all dimensions
+    const items = [];
+
+    if (Array.isArray(scale.dimensions)) {
+      scale.dimensions.forEach(dim => {
+        if (Array.isArray(dim.items)) {
+          dim.items.forEach(item => {
+            items.push({
+              ...item,
+              dimension: dim.name
+            });
+          });
+        }
+      });
+    }
+
+    return items;
+  }
+
   // ==================== MOCK DATA ====================
 
   // Mock items with proper structure (dual rubric, origin mapping)
@@ -1003,23 +1191,10 @@
     };
     state.canvasState.scales.set(boomerScale.scale_id, boomerScale);
 
-    // Flatten items for questionnaire preview (Root only)
-    const itemsAsli = MOCK_ITEMS.filter(i => i.scale_group === 'asli');
-    state.items = itemsAsli.map(item => ({
-      item_id: item.item_id,
-      item_text: item.text
-    }));
-
-    state.csvData = {
-      headers: ['item_id', 'item_text'],
-      items: state.items,
-      rawRowCount: state.items.length
-    };
+    // Select root scale for preview (this sets items, updates button label, etc.)
+    selectScale(rootScale.scale_id);
 
     console.log('[MLPA] Mock data loaded: Root + 2 Branches');
-
-    // Initialize questionnaire
-    initQuestionnaire();
 
     // Transition to main app
     showScreen(2);
@@ -1040,6 +1215,9 @@
     // Edit mode state
     activeEditItem: null,
     editBackupText: '',
+
+    // Loading animation state
+    loadingDotsInterval: null,
 
     init() {
       this.canvas = document.getElementById('flow-canvas');
@@ -1545,6 +1723,16 @@
       popup?.classList.add('hidden');
       const input = document.getElementById('branching-input');
       if (input) input.value = '';
+
+      // Stop loading animation if popup closed during processing
+      this.stopLoadingDots();
+
+      // Reset button state
+      const submitBtn = document.getElementById('branching-submit');
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.querySelector('span').textContent = 'Buat Cabang Baru';
+      }
     },
 
     // ============================================================================
@@ -1700,6 +1888,39 @@
       alert('Gagal membuat cabang: ' + message);
     },
 
+    /**
+     * Start animated loading dots on button
+     * @param {HTMLElement} button - The submit button element
+     * @param {string} baseText - Base text without dots (e.g., "Memproses")
+     */
+    startLoadingDots(button, baseText = 'Memproses') {
+      // Clear any existing interval
+      this.stopLoadingDots();
+
+      let dotCount = 0;
+      const spanElement = button.querySelector('span');
+
+      // Immediate update
+      spanElement.textContent = baseText + '.';
+
+      // Start interval (cycles every 400ms)
+      this.loadingDotsInterval = setInterval(() => {
+        dotCount = (dotCount + 1) % 3;  // 0, 1, 2, 0, 1, 2...
+        const dots = '.'.repeat(dotCount + 1);  // ., .., ...
+        spanElement.textContent = baseText + dots;
+      }, 400);
+    },
+
+    /**
+     * Stop loading dots animation
+     */
+    stopLoadingDots() {
+      if (this.loadingDotsInterval) {
+        clearInterval(this.loadingDotsInterval);
+        this.loadingDotsInterval = null;
+      }
+    },
+
     async handleBranchingSubmit() {
       // Get input
       const input = document.getElementById('branching-input');
@@ -1721,10 +1942,10 @@
         return;
       }
 
-      // Show loading state
+      // Show loading state with animated dots
       if (submitBtn) {
         submitBtn.disabled = true;
-        submitBtn.querySelector('span').textContent = 'Memproses...';
+        this.startLoadingDots(submitBtn, 'Memproses');
       }
 
       try {
@@ -1782,6 +2003,7 @@
       } finally {
         // Reset button state
         if (submitBtn) {
+          this.stopLoadingDots();
           submitBtn.disabled = false;
           submitBtn.querySelector('span').textContent = 'Buat Cabang Baru';
         }

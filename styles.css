@@ -680,25 +680,209 @@ body.preview-mode .preview-return {
   text-align: center;
 }
 
-.dropdown-wrapper {
+/* Scale Selector Button */
+.scale-selector-btn {
   display: flex;
-  justify-content: center;
-}
-
-.scale-dropdown {
+  align-items: center;
+  gap: 8px;
   padding: 10px 16px;
   font-size: var(--font-size-sm);
   font-family: var(--font-family);
+  font-weight: var(--font-weight-medium);
   color: var(--color-text);
   background: var(--color-bg);
   border: 1px solid var(--color-border);
   border-radius: var(--border-radius-sm);
   cursor: pointer;
-  transition: border-color var(--transition-fast);
+  transition: all var(--transition-fast);
 }
 
-.scale-dropdown:hover {
+.scale-selector-btn:hover {
   border-color: var(--color-border-hover);
+  background: var(--color-surface-hover);
+}
+
+.scale-selector-btn:active {
+  transform: scale(0.98);
+}
+
+.scale-selector-chevron {
+  width: 16px;
+  height: 16px;
+  color: var(--color-text-muted);
+  transition: transform var(--transition-fast);
+}
+
+.scale-selector-btn.open .scale-selector-chevron {
+  transform: rotate(180deg);
+}
+
+/* ==================== */
+/* Scale Selector Modal */
+/* ==================== */
+
+.scale-selector-modal {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity var(--transition-smooth), visibility var(--transition-smooth);
+}
+
+.scale-selector-modal.open {
+  opacity: 1;
+  visibility: visible;
+}
+
+.scale-selector-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.scale-selector-window {
+  position: relative;
+  width: 90%;
+  max-width: 600px;
+  max-height: 80vh;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.15);
+  transform: scale(0.95);
+  transition: transform var(--transition-smooth);
+  overflow: hidden;
+}
+
+.scale-selector-modal.open .scale-selector-window {
+  transform: scale(1);
+}
+
+.scale-selector-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.scale-selector-title {
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text);
+}
+
+.scale-selector-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: var(--border-radius-sm);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.scale-selector-close:hover {
+  background: var(--color-surface-hover);
+  color: var(--color-text);
+}
+
+.scale-selector-close svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* Scale Selector Graph */
+.scale-selector-graph {
+  position: relative;
+  min-height: 200px;
+  padding: 32px;
+  overflow: auto;
+}
+
+.scale-selector-connections {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: visible;
+}
+
+.scale-selector-connector {
+  fill: none;
+  stroke: var(--color-border-hover);
+  stroke-width: 2;
+}
+
+.scale-selector-nodes {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Scale Node */
+.scale-node {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius-sm);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.scale-node:hover {
+  border-color: var(--color-border-hover);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.scale-node.selected {
+  border-color: var(--color-text);
+}
+
+.scale-node-dot {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--color-surface-hover);
+  border: 2px solid var(--color-border);
+  transition: all var(--transition-fast);
+  flex-shrink: 0;
+}
+
+.scale-node:hover .scale-node-dot {
+  border-color: var(--color-border-active);
+}
+
+.scale-node.selected .scale-node-dot {
+  background: var(--color-text);
+  border-color: var(--color-text);
+}
+
+.scale-node-name {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text);
+}
+
+.scale-node-depth {
+  margin-left: auto;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-dim);
 }
 
 /* ==================== */

@@ -25,7 +25,7 @@
           atau tarik file ke sini
         </p>
         <p class="error-message" id="error-message" role="alert" aria-live="polite"></p>
-        <button class="test-api-btn" id="test-mock-btn">Uji dengan Data Mock</button>
+        <button class="test-api-btn" id="test-mock-btn">Tes Prototype dengan Data Mockup yang Ada</button>
       </div>
     </div>
     <input type="file" id="file-input" class="file-input" accept=".csv" aria-hidden="true">
@@ -96,11 +96,12 @@
       <section id="screen-2" class="screen inner-screen active">
         <div class="screen-header admin-ui">
           <h2 class="screen-title">Tampilan Preview Kuesioner</h2>
-          <div class="dropdown-wrapper">
-            <select id="scale-dropdown" class="scale-dropdown">
-              <option value="">-- Pilih Skala --</option>
-            </select>
-          </div>
+          <button id="scale-selector-btn" class="scale-selector-btn">
+            <span id="scale-selector-label">Pilih Skala</span>
+            <svg class="scale-selector-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M6 9l6 6 6-6" />
+            </svg>
+          </button>
         </div>
 
         <!-- Questionnaire Container -->
@@ -170,6 +171,25 @@
           <span class="reset-tooltip">Mulai ulang kuesioner</span>
         </button>
       </section>
+
+      <!-- Scale Selector Modal -->
+      <div id="scale-selector-modal" class="scale-selector-modal">
+        <div class="scale-selector-backdrop"></div>
+        <div class="scale-selector-window">
+          <div class="scale-selector-header">
+            <span class="scale-selector-title">Pilih Skala untuk Preview</span>
+            <button id="scale-selector-close" class="scale-selector-close" aria-label="Tutup">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M18 6L6 18M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          <div class="scale-selector-graph">
+            <svg id="scale-selector-connections" class="scale-selector-connections"></svg>
+            <div id="scale-selector-nodes" class="scale-selector-nodes"></div>
+          </div>
+        </div>
+      </div>
 
       <!-- Screen 3: Tampilan Edit -->
       <section id="screen-3" class="screen inner-screen flow-screen">

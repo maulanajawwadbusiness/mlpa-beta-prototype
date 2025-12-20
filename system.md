@@ -72,6 +72,7 @@ const state = {
   // Questionnaire Data
   items: [],
   answers: {},
+  selectedScaleId: null,  // Currently selected scale for preview
 
   // Tampilan Edit State (Screen 3)
   canvasState: {
@@ -100,9 +101,43 @@ The app functions as a Single Page Application (SPA).
 
 ## 5. Key Modules & Systems
 
-### 5.1 Questionnaire Engine (Screen 2)
-- **Logic:** Renders one item at a time or grid view (preview mode).
-- **Components:** Likert scale (1-5 dots), progress bar, navigation buttons.
+### 5.1 Questionnaire Engine (Screen 2: Tampilan Preview Kuesioner)
+- **Logic:** Renders one item at a time with Likert scale interaction.
+- **Components:** 
+  - Likert scale (1-5 dots)
+  - Progress counter ("Item X / Y")
+  - Navigation arrows (Previous/Next)
+  - Completion screen with score summary
+- **Scale Selector:** Button that opens mini flowchart modal for selecting which scale version to preview.
+
+#### **Scale Selector System:**
+**Purpose:** Allow users to switch between different scale versions (root and branches) in the preview screen.
+
+**UI Components:**
+- **Selector Button:** Displays current selected scale name with chevron icon
+- **Modal Window:** Medium-sized chooser with tree visualization
+- **Tree Layout:** Scales organized by parent-child relationships with indentation (32px per depth level)
+- **Node Display:** Scale name + clickable dot + depth label ("Asal" for root, "Cabang" for branches)
+
+**Behavior:**
+- Click button → Opens modal with scale tree
+- Click node → Selects scale, updates questionnaire items immediately, closes modal
+- Click backdrop or press Escape → Closes modal
+- Preview mode → Hides selector button (admin-ui class)
+
+**Key Functions:**
+- `openScaleSelector()`: Renders graph and opens modal
+- `closeScaleSelector()`: Closes modal
+- `renderScaleSelectorGraph()`: Builds tree from `parent_scale_id` relationships
+- `selectScale(scaleId)`: Updates `selectedScaleId`, extracts items, refreshes questionnaire
+- `getScaleItems(scale)`: Flattens dimensions into item array
+
+**Data Flow:**
+1. User clicks scale node
+2. `selectScale()` extracts all items from that scale's dimensions
+3. Sets `state.items` to flattened item list
+4. Resets `currentItemIndex` to 0 and clears answers
+5. Calls `updateQuestionnaireUI()` to refresh display
 
 ### 5.2 Flow Editor (Screen 3: Tampilan Edit)
 A custom-built node-based editor for managing scales with infinite canvas architecture.
@@ -217,7 +252,9 @@ y         = parent.y + direction * layer * ROW_HEIGHT
 - **Trigger:** Click branch button on flow box hover tools
 - **Input:** Textarea for adaptation intent (e.g., "adaptasi untuk Gen-Z")
 - **Output:** Calls GPT API, creates new scale with GPT-generated dimensions/items
-- **Loading State:** Button shows "Memproses..." during API call
+- **Loading State:** Button shows animated dots ("Memproses.", "Memproses..", "Memproses...") during API call
+  - Animation: 400ms interval cycling through 1-3 dots
+  - Cleanup: Animation stops on success, error, or popup close
 
 
 **Dimension:**
@@ -313,13 +350,67 @@ if (item.current_rubric && item.current_rubric.length > 0) {
 - No shadow (flat design)
 - Bullet points before each trait
 
-### 5.5 Mock Data System
-**File:** `test-data.csv` and `MOCK_ITEMS` constant in `app.js`
+### 5.5 Cascade Delete System
+**Purpose:** Allow deletion of scales with automatic cascade to all descendants.
 
-**Structure:** 10 items across 3 dimensions with complete rubric data:
-- **Dimension 1:** Kepercayaan Diri (items 1-3)
-- **Dimension 2:** Regulasi Emosi (items 4-7)
-- **Dimension 3:** Optimisme (items 8-10)
+**UI Integration:**
+- Delete button appears in `.flow-box-tools` for non-root scales only
+- Root scales (`is_root === true`) do not show delete button (UI-level protection)
+- Button uses trash icon SVG, matches design system
+
+**Behavior:**
+- Click delete → Shows confirmation dialog with descendant count
+- User confirms → Deletes scale and all children recursively
+- User cancels → No action
+- After deletion → Canvas re-renders via `renderAll()`
+
+**Safety Mechanisms:**
+- **UI Protection:** Delete button not rendered for root scales
+- **Backend Protection:** `handleDeleteScale()` checks `is_root` as fallback
+- **Confirmation:** Native `confirm()` dialog shows exact count ("...dan X turunannya?")
+
+**Cascade Logic:**
+- Iterative broad-phase approach
+- Scans all scales to find children whose `parent_scale_id` is in deletion set
+- Repeats until no new children found
+- Results in comprehensive `Set` of IDs to delete
+
+**Key Function:**
+```javascript
+handleDeleteScale(scaleId) {
+  // 1. Root protection check
+  // 2. Build cascade set via tree traversal
+  // 3. Show confirmation with count
+  // 4. Delete from state.canvasState.scales
+  // 5. Reset activeScaleId if deleted
+  // 6. Call renderAll() once
+}
+```
+
+### 5.6 Mock Data System
+**File:** `MOCK_ITEMS` constant in `app.js`
+
+**Structure:** Three complete scales with 10 items each across 3 dimensions:
+
+**Skala Asli (Root):**
+- Dimension 1: Kepercayaan Diri (items 1-3)
+- Dimension 2: Regulasi Emosi (items 4-7)
+- Dimension 3: Optimisme (items 8-10)
+
+**Skala Gen-Z (Branch 1):**
+- Dimension 1: Kepercayaan Diri & Keberanian (items 1-3)
+- Dimension 2: Regulasi Emosi & Interaksi (items 4-7)
+- Dimension 3: Optimisme dan Tujuan (Goals) (items 8-10)
+
+**Skala Boomer (Branch 2):**
+- Dimension 1: Kepercayaan Diri pada Usia Boomer (items 1-3)
+- Dimension 2: Regulasi Emosi dan Interaksi Sosial (items 4-7)
+- Dimension 3: Optimisme dan Makna Hidup (items 8-10)
+
+**Initialization:**
+- `handleLoadMock()` creates root scale and two branches
+- Uses `flowEditor.getNextBranchPosition()` for standard layout
+- Calls `selectScale(rootScale.scale_id)` to initialize preview
 
 **Rubric Example (Item 1):**
 ```javascript
@@ -331,14 +422,7 @@ baseline_rubric: [
 ]
 ```
 
-**CSV Format:**
-```csv
-item_id,dimension,item_text
-1,Kepercayaan Diri,Saya merasa percaya diri dalam menghadapi tantangan baru
-...
-```
-
-### 5.6 OpenAI API Layer (`api.js`)
+### 5.7 OpenAI API Layer (`api.js`)
 - **Purpose:** Abstract GPT-5.2 complexity.
 - **Methods:** 
   - `analyzeCSV`: Parse CSV data into JSON
