@@ -1,6 +1,6 @@
 /**
  * MLPA Prototype - OpenAI Response API Layer
- * Clean abstraction for GPT-5.2 and GPT-5.2-mini
+ * Clean abstraction for GPT-5.2 and gpt-5-mini
  */
 
 const OpenAIAPI = (function () {
@@ -11,7 +11,7 @@ const OpenAIAPI = (function () {
         apiKey: null, // Set via configure()
         baseUrl: 'https://api.openai.com/v1',
         defaultModel: 'gpt-5.2',
-        supportedModels: ['gpt-5.2', 'gpt-5.2-mini']
+        supportedModels: ['gpt-5.2', 'gpt-5-mini']
     };
 
     // Prompt templates (separated from logic)
@@ -35,6 +35,42 @@ Instructions:
 4. Return ONLY valid JSON, no explanation
 
 Respond with the JSON object only.`
+        }),
+
+        // V2: Dimensions + Items (text only) - rubrics filled by app
+        adaptScale: (sourceDimensions, adaptationIntent) => ({
+            role: 'user',
+            content: `You are adapting a psychometric scale for a specific audience.
+
+SOURCE SCALE:
+${JSON.stringify(sourceDimensions.map(d => ({
+                name: d.name,
+                items: d.items.map(i => i.text)
+            })), null, 2)}
+
+ADAPTATION INTENT:
+${adaptationIntent}
+
+Return a JSON object with EXACTLY this structure:
+{
+  "scale_name": "Descriptive name for the adapted scale",
+  "dimensions": [
+    {
+      "name": "Adapted dimension name",
+      "items": [
+        { "text": "Adapted item text 1" },
+        { "text": "Adapted item text 2" }
+      ]
+    }
+  ]
+}
+
+Rules:
+- Keep the same number of dimensions as the source
+- Keep the same number of items per dimension
+- Adapt dimension names and item texts to match the intent
+- Do NOT include item_id, rubrics, or any other fields
+- Return ONLY valid JSON, no explanation`
         })
     };
 
@@ -60,7 +96,7 @@ Respond with the JSON object only.`
     /**
      * Make a Response API call to OpenAI
      * @param {Object} options - Request options
-     * @param {string} options.model - Model to use (gpt-5.2 or gpt-5.2-mini)
+     * @param {string} options.model - Model to use (gpt-5.2 or gpt-5-mini)
      * @param {Array} options.input - Input messages array
      * @param {Object} options.text - Text response format config
      * @returns {Promise<Object>} API response
@@ -149,6 +185,70 @@ Respond with the JSON object only.`
         return response.output?.[0]?.content?.[0]?.text || response.output_text || '';
     }
 
+    /**
+     * Adapt a scale for a specific audience (V1: dimensions only)
+     * Uses Chat Completions API with JSON response format
+     * @param {Array} sourceDimensions - Source scale dimensions
+     * @param {string} adaptationIntent - User's adaptation intent
+     * @param {string} [model='gpt-5-mini'] - Model to use
+     * @returns {Promise<Object>} { scale_name, dimensions } or { error }
+     */
+    async function adaptScale(sourceDimensions, adaptationIntent, model = 'gpt-5-mini') {
+        console.log(`[OpenAI API] Adapting scale with ${model}...`);
+
+        if (!config.apiKey) {
+            return { error: 'API key not configured' };
+        }
+
+        // Build messages for Chat Completions API
+        const messages = [
+            {
+                role: 'system',
+                content: 'You are adapting a psychometric scale. Return ONLY valid JSON, no explanation.'
+            },
+            prompts.adaptScale(sourceDimensions, adaptationIntent)
+        ];
+
+        try {
+            const response = await fetch(`${config.baseUrl}/chat/completions`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${config.apiKey}`
+                },
+                body: JSON.stringify({
+                    model: model,
+                    messages: messages,
+                    response_format: { type: 'json_object' }
+                })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                console.error('[OpenAI API] Error response:', errorData);
+                return { error: `API Error ${response.status}: ${errorData.error?.message || response.statusText}` };
+            }
+
+            const data = await response.json();
+            console.log('[OpenAI API] Full response:', data);
+
+            // Extract content from Chat Completions response structure
+            const outputText = data.choices?.[0]?.message?.content || '';
+
+            if (!outputText) {
+                console.error('[OpenAI API] Could not extract text from response');
+                return { error: 'GPT tidak merespons' };
+            }
+
+            const parsed = JSON.parse(outputText);
+            console.log('[OpenAI API] Scale adaptation complete:', parsed);
+            return parsed;
+        } catch (error) {
+            console.error('[OpenAI API] Adaptation failed:', error);
+            return { error: error.message || 'Koneksi gagal' };
+        }
+    }
+
     // Public API
     return {
         configure,
@@ -156,6 +256,7 @@ Respond with the JSON object only.`
         createResponse,
         analyzeCSV,
         ask,
+        adaptScale,
         models: config.supportedModels
     };
 })();

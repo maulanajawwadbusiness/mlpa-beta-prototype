@@ -1248,12 +1248,23 @@
       const popup = document.getElementById('branching-popup');
       if (!popup) return;
 
-      // Find the flow box and position popup anchored to it
+      // Get the flow box DOM element for accurate dimensions
       const flowBox = document.querySelector(`.flow-box[data-scale-id="${scaleId}"]`);
-      if (flowBox) {
-        const rect = flowBox.getBoundingClientRect();
-        popup.style.left = `${rect.right + 16}px`;
-        popup.style.top = `${rect.top + (rect.height / 2)}px`;
+      const canvas = this.canvas;
+
+      if (flowBox && canvas) {
+        const flowBoxRect = flowBox.getBoundingClientRect();
+        const canvasRect = canvas.getBoundingClientRect();
+        const panX = state.canvasState.pan.x;
+        const panY = state.canvasState.pan.y;
+
+        // Convert screen coords to world coords
+        const worldRight = flowBoxRect.right - canvasRect.left - panX;
+        const worldCenterY = flowBoxRect.top + flowBoxRect.height / 2 - canvasRect.top - panY;
+
+        // Position popup to the right of flow box in world space
+        popup.style.left = `${worldRight + 16}px`;
+        popup.style.top = `${worldCenterY}px`;
         popup.style.transform = 'translateY(-50%)';
       }
 
@@ -1316,9 +1327,95 @@
       };
     },
 
+    // ============================================================================
+    // GPT SCALE GENERATION (V1: Dimensions only)
+    // ============================================================================
+    // Invariant: If GPT succeeds, the resulting scale must be renderable
+    // without triggering any layout recomputation.
+
+    /**
+     * Validate GPT response has required fields (V2)
+     * @returns {{ valid: boolean, error?: string }}
+     */
+    validateGptScale(gptResult, sourceScale) {
+      if (!gptResult) return { valid: false, error: 'No response' };
+      if (gptResult.error) return { valid: false, error: gptResult.error };
+      if (!gptResult.scale_name || typeof gptResult.scale_name !== 'string') {
+        return { valid: false, error: 'Missing scale_name' };
+      }
+      if (!Array.isArray(gptResult.dimensions) || gptResult.dimensions.length === 0) {
+        return { valid: false, error: 'Missing or empty dimensions' };
+      }
+
+      // V2: Validate items
+      for (let i = 0; i < gptResult.dimensions.length; i++) {
+        const dim = gptResult.dimensions[i];
+        if (!dim.name || typeof dim.name !== 'string') {
+          return { valid: false, error: `Dimension ${i + 1} missing name` };
+        }
+        if (!Array.isArray(dim.items) || dim.items.length === 0) {
+          return { valid: false, error: `Dimension "${dim.name}" has no items` };
+        }
+        for (let j = 0; j < dim.items.length; j++) {
+          const item = dim.items[j];
+          if (!item.text || typeof item.text !== 'string') {
+            return { valid: false, error: `Item ${j + 1} in "${dim.name}" missing text` };
+          }
+        }
+      }
+
+      // Warn if dimension count mismatch (but don't fail)
+      if (sourceScale && gptResult.dimensions.length !== sourceScale.dimensions.length) {
+        console.warn(`[MLPA Branching] Dimension count mismatch: source=${sourceScale.dimensions.length}, gpt=${gptResult.dimensions.length}`);
+      }
+
+      return { valid: true };
+    },
+
+    /**
+     * Expand GPT items with mock rubrics (V2)
+     * @param {Array} gptDimensions - [{ name, items: [{ text }] }]
+     * @param {string} scaleId - Scale ID for namespacing
+     * @param {Array} sourceDimensions - Source dimensions for origin_item_id mapping
+     * @returns {Array} Full dimensions with all required fields
+     */
+    expandWithMockRubrics(gptDimensions, scaleId, sourceDimensions) {
+      let itemCounter = 1;
+      return gptDimensions.map((dim, dimIndex) => {
+        const sourceItems = sourceDimensions[dimIndex]?.items || [];
+
+        // Warn if item count mismatch
+        if (dim.items.length !== sourceItems.length) {
+          console.warn(`[MLPA Branching] Item count mismatch in "${dim.name}": source=${sourceItems.length}, gpt=${dim.items.length}`);
+        }
+
+        return {
+          name: dim.name,
+          items: dim.items.map((item, itemIndex) => ({
+            item_id: `${scaleId}-item-${itemCounter++}`,
+            origin_item_id: sourceItems[itemIndex]?.item_id || 'unknown',
+            text: item.text,
+            baseline_rubric: sourceItems[itemIndex]?.baseline_rubric || ['Mock Rubric'],
+            current_rubric: sourceItems[itemIndex]?.baseline_rubric || ['Mock Rubric'],
+            dimension: dim.name
+          }))
+        };
+      });
+    },
+
+    /**
+     * Show error notification toast
+     */
+    showBranchingError(message) {
+      console.error('[MLPA Branching]', message);
+      // Simple alert for now - can be upgraded to toast later
+      alert('Gagal membuat cabang: ' + message);
+    },
+
     async handleBranchingSubmit() {
       // Get input
       const input = document.getElementById('branching-input');
+      const submitBtn = document.getElementById('branching-submit');
       const adaptationIntent = input?.value?.trim();
 
       // Guard: empty input
@@ -1336,81 +1433,71 @@
         return;
       }
 
-      // Generate unique branch ID and compute branch index
-      // Invariant: branch_index is 0-indexed and computed from scale ID count
-      const branchCount = Array.from(state.canvasState.scales.keys())
-        .filter(id => id.startsWith(sourceScaleId + '-branch')).length + 1;
-      const newScaleId = `${sourceScaleId}-branch-${branchCount}`;
-      const branch_index = branchCount - 1;
+      // Show loading state
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.querySelector('span').textContent = 'Memproses...';
+      }
 
-      // Compute position using deterministic formula
-      const newPosition = this.getNextBranchPosition(sourceScaleId, branch_index);
+      try {
+        // Call GPT to adapt dimensions
+        console.log('[MLPA Branching] Calling GPT for adaptation...');
+        const gptResult = await OpenAIAPI.adaptScale(sourceScale.dimensions, adaptationIntent);
 
-      // Create hardcoded mock scale (structural stub - no AI)
-      const mockBranchedScale = {
-        scale_id: newScaleId,
-        scale_name: `Skala Cabang (Mock ${branchCount})`,
-        parent_scale_id: sourceScaleId,
-        is_root: false,
-        expanded: false,
-        depth: newPosition.depth,  // Depth for horizontal positioning
-        branch_index: newPosition.branch_index,
-        position: { x: newPosition.x, y: newPosition.y },
-        positionLocked: true, // Prevent auto-repositioning
-        dimensions: [
-          {
-            name: 'Dimensi Stub A',
-            items: [
-              {
-                item_id: `${newScaleId}-item-1`,
-                origin_item_id: '1',
-                text: 'Item stub pertama untuk testing render',
-                baseline_rubric: ['Trait A', 'Trait B', 'Perspektif Pertama'],
-                current_rubric: ['Trait A', 'Trait B', 'Perspektif Pertama'],
-                dimension: 'Dimensi Stub A'
-              },
-              {
-                item_id: `${newScaleId}-item-2`,
-                origin_item_id: '2',
-                text: 'Item stub kedua dengan rubrik lengkap',
-                baseline_rubric: ['Trait C', 'Trait D', 'Pengalaman'],
-                current_rubric: ['Trait C', 'Trait D', 'Pengalaman'],
-                dimension: 'Dimensi Stub A'
-              }
-            ]
-          },
-          {
-            name: 'Dimensi Stub B',
-            items: [
-              {
-                item_id: `${newScaleId}-item-3`,
-                origin_item_id: '3',
-                text: 'Item stub ketiga di dimensi berbeda',
-                baseline_rubric: ['Trait E', 'Trait F', 'Kemampuan'],
-                current_rubric: ['Trait E', 'Trait F', 'Kemampuan'],
-                dimension: 'Dimensi Stub B'
-              },
-              {
-                item_id: `${newScaleId}-item-4`,
-                origin_item_id: '4',
-                text: 'Item stub keempat sebagai penutup',
-                baseline_rubric: ['Trait G', 'Trait H', 'Evaluasi Diri'],
-                current_rubric: ['Trait G', 'Trait H', 'Evaluasi Diri'],
-                dimension: 'Dimensi Stub B'
-              }
-            ]
-          }
-        ]
-      };
+        // Validate GPT response (V2: includes items)
+        const validation = this.validateGptScale(gptResult, sourceScale);
+        if (!validation.valid) {
+          this.showBranchingError(validation.error);
+          return;
+        }
 
-      // Add to canvas state
-      state.canvasState.scales.set(newScaleId, mockBranchedScale);
+        // Generate unique branch ID and compute branch index
+        const branchCount = Array.from(state.canvasState.scales.keys())
+          .filter(id => id.startsWith(sourceScaleId + '-branch')).length + 1;
+        const newScaleId = `${sourceScaleId}-branch-${branchCount}`;
+        const branch_index = branchCount - 1;
 
-      // Close popup and clear input
-      this.closeBranchingPopup();
+        // Compute position using deterministic formula
+        const newPosition = this.getNextBranchPosition(sourceScaleId, branch_index);
 
-      // Re-render canvas
-      this.renderAll();
+        // Expand GPT items with mock rubrics (V2)
+        const fullDimensions = this.expandWithMockRubrics(gptResult.dimensions, newScaleId, sourceScale.dimensions);
+
+        // Assemble final scale
+        const newScale = {
+          scale_id: newScaleId,
+          scale_name: gptResult.scale_name,
+          parent_scale_id: sourceScaleId,
+          is_root: false,
+          expanded: false,
+          depth: newPosition.depth,
+          branch_index: newPosition.branch_index,
+          position: { x: newPosition.x, y: newPosition.y },
+          positionLocked: true,
+          dimensions: fullDimensions
+        };
+
+        // Add to canvas state (only on success)
+        state.canvasState.scales.set(newScaleId, newScale);
+
+        // Close popup and clear input
+        this.closeBranchingPopup();
+
+        // Re-render canvas
+        this.renderAll();
+
+        console.log('[MLPA Branching] Branch created successfully:', newScaleId);
+
+      } catch (error) {
+        console.error('[MLPA Branching] Unexpected error:', error);
+        this.showBranchingError(error.message || 'Unknown error');
+      } finally {
+        // Reset button state
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.querySelector('span').textContent = 'Buat Cabang Baru';
+        }
+      }
     },
 
     // TEST 2: Parent movement propagation test
@@ -1750,30 +1837,62 @@
       }, 1500);
     },
 
+    // ============================================================================
+    // CONNECTORS (Visual-only, derived from parent_scale_id)
+    // ============================================================================
+    // Connectors are rendered AFTER layout, never during position calculation.
+    // They read DOM positions and derive relationships from scale state.
+
     renderConnections() {
       if (!this.connectionsLayer) return;
       this.connectionsLayer.innerHTML = '';
 
-      state.canvasState.connections.forEach(conn => {
-        const fromScale = state.canvasState.scales.get(conn.from);
-        const toScale = state.canvasState.scales.get(conn.to);
-        if (!fromScale || !toScale) return;
+      // Get canvas offset for screen → world space conversion
+      const canvasRect = this.canvas?.getBoundingClientRect();
+      if (!canvasRect) return;
 
-        const path = this.createBezierPath(fromScale.position, toScale.position);
+      const panX = state.canvasState.pan.x;
+      const panY = state.canvasState.pan.y;
+
+      // Iterate through scales and draw connections to parents
+      state.canvasState.scales.forEach((scale) => {
+        if (!scale.parent_scale_id) return;  // Skip root scales
+
+        const parentScale = state.canvasState.scales.get(scale.parent_scale_id);
+        if (!parentScale) return;
+
+        // Get DOM elements
+        const parentEl = document.querySelector(`.flow-box[data-scale-id="${scale.parent_scale_id}"]`);
+        const childEl = document.querySelector(`.flow-box[data-scale-id="${scale.scale_id}"]`);
+        if (!parentEl || !childEl) return;
+
+        // Get bounding rects (screen space)
+        const parentRect = parentEl.getBoundingClientRect();
+        const childRect = childEl.getBoundingClientRect();
+
+        // Convert to world space (subtract canvas offset and pan)
+        const px = parentRect.right - canvasRect.left - panX;
+        const py = parentRect.top + parentRect.height / 2 - canvasRect.top - panY;
+        const cx = childRect.left - canvasRect.left - panX;
+        const cy = childRect.top + childRect.height / 2 - canvasRect.top - panY;
+
+        // Create bezier path
+        const path = this.createBezierPath(px, py, cx, cy);
         this.connectionsLayer.insertAdjacentHTML('beforeend',
           `<path class="flow-connection-line" d="${path}" />`
         );
       });
     },
 
-    createBezierPath(from, to) {
-      const startX = from.x + 160; // Center of box
-      const startY = from.y + 50;
-      const endX = to.x + 160;
-      const endY = to.y + 50;
-      const midX = (startX + endX) / 2;
+    createBezierPath(px, py, cx, cy) {
+      // Simple cubic bezier: horizontal control points
+      const dx = cx - px;
+      const c1x = px + dx * 0.4;
+      const c1y = py;
+      const c2x = cx - dx * 0.4;
+      const c2y = cy;
 
-      return `M ${startX} ${startY} C ${midX} ${startY}, ${midX} ${endY}, ${endX} ${endY}`;
+      return `M ${px} ${py} C ${c1x} ${c1y}, ${c2x} ${c2y}, ${cx} ${cy}`;
     },
 
     // Debug Panel Functions

@@ -118,9 +118,12 @@ A custom-built node-based editor for managing scales with infinite canvas archit
   - Column 2: Dimension name (e.g., "Kepercayaan Diri")
 - **Styling:** 
   - `writing-mode: vertical-rl` with `transform: rotate(180deg)`
-  - Fixed 56px width strip, absolute positioned
-  - `flex-direction: row` with 2px gap between columns
-  - Font size: 0.72em, line-height: 1.05
+  - Fixed 44px width strip, absolute positioned
+  - `flex-direction: row` with 1px gap between columns
+  - Font size: 0.58em (with !important override), line-height: 0.95
+  - Text wrapping: `white-space: normal`, `word-break: break-word`
+  - Overflow: `overflow: hidden` on container to prevent leaking
+  - Padding: 10px 7px (Apple-style tight spacing)
 
 #### **Item Indexing:**
 - **Global Counter:** Items numbered continuously across all dimensions within each flow box
@@ -177,15 +180,18 @@ y         = parent.y + direction * layer * ROW_HEIGHT
 
 **Key Methods:**
 - `getNextBranchPosition(sourceScaleId, branch_index)`: Computes position for new branch
-- `handleBranchingSubmit()`: Creates mock branched scale with locked position
-- `openBranchingPopup(scaleId)`: Anchors popup to clicked flow box
+- `handleBranchingSubmit()`: **V2** - Calls GPT to generate adapted scale, validates, expands with rubrics
+- `validateGptScale(gptResult, sourceScale)`: Validates GPT response structure
+- `expandWithMockRubrics(gptDimensions, scaleId, sourceDimensions)`: Expands GPT items with app-injected fields
+- `openBranchingPopup(scaleId)`: Anchors popup to clicked flow box (world-space positioning)
 - `closeBranchingPopup()`: Hides popup and clears input
 
 **Branching Popup:**
-- **Position:** Fixed, dynamically anchored to right of source flow box
+- **Position:** Absolute within `#flow-world`, dynamically positioned to right of source flow box
 - **Trigger:** Click branch button on flow box hover tools
-- **Input:** Textarea for adaptation intent (currently bypassed for mock)
-- **Output:** Creates new scale with deterministic position
+- **Input:** Textarea for adaptation intent (e.g., "adaptasi untuk Gen-Z")
+- **Output:** Calls GPT API, creates new scale with GPT-generated dimensions/items
+- **Loading State:** Button shows "Memproses..." during API call
 
 
 **Dimension:**
@@ -308,8 +314,70 @@ item_id,dimension,item_text
 
 ### 5.6 OpenAI API Layer (`api.js`)
 - **Purpose:** Abstract GPT-5.2 complexity.
-- **Methods:** `analyzeCSV`, `ask`, `createResponse`.
-- **Config:** Supports `gpt-5.2` and `gpt-5.2-mini`.
+- **Methods:** 
+  - `analyzeCSV`: Parse CSV data into JSON
+  - `ask`: Generic prompt call
+  - `createResponse`: Low-level Response API wrapper
+  - `adaptScale`: **V2** - Adapt psychometric scales (dimensions + items)
+- **Config:** Supports `gpt-5.2` and `gpt-5-mini`.
+
+#### **GPT Scale Generation (V2):**
+**Scope:**
+- GPT generates **dimension names** and **item texts**
+- App injects: `item_id`, `origin_item_id`, `baseline_rubric`, `current_rubric`
+
+**Prompt Structure:**
+```javascript
+{
+  role: 'user',
+  content: `
+    SOURCE SCALE: [dimensions with item texts]
+    ADAPTATION INTENT: ${userInput}
+    
+    Return JSON:
+    {
+      "scale_name": "...",
+      "dimensions": [
+        {
+          "name": "...",
+          "items": [{ "text": "..." }]
+        }
+      ]
+    }
+  `
+}
+```
+
+**API Call:**
+- Endpoint: `/v1/chat/completions` (Chat Completions API)
+- Model: `gpt-5-mini`
+- Response format: `{ type: 'json_object' }`
+
+**Validation Pipeline:**
+1. Check `scale_name` exists
+2. Check `dimensions` is non-empty array
+3. For each dimension:
+   - Check `name` exists
+   - Check `items` is non-empty array
+   - For each item: check `text` exists
+4. Warn (don't fail) on dimension/item count mismatch
+
+**Item Expansion (`expandWithMockRubrics`):**
+```javascript
+{
+  item_id: `${scaleId}-item-${n}`,           // App-generated
+  origin_item_id: sourceItems[i].item_id,    // Index-mapped from parent
+  text: gptItem.text,                        // GPT-generated
+  baseline_rubric: sourceItems[i].baseline_rubric,  // Copied from parent
+  current_rubric: sourceItems[i].baseline_rubric,   // Same as baseline
+  dimension: dim.name                        // GPT-generated
+}
+```
+
+**Invariants:**
+- Resulting scale must be renderable without layout recomputation
+- No changes to positioning, connectors, or canvas logic
+- `item_id` always follows pattern: `{scaleId}-item-{n}`
 
 ---
 
@@ -362,6 +430,6 @@ item_id,dimension,item_text
 ## 10. Known Limitations
 - **Browser Support:** Modern browsers only (ES6+, CSS Grid, contenteditable)
 - **CSV Format:** Expects specific column names (item_id, dimension, item_text)
-- **Rubric Generation:** Placeholder only (AI integration pending)
-- **Branching:** UI exists but backend logic incomplete
+- **Rubric Generation:** Currently copied from parent scale (GPT rubric generation pending)
+- **Branching:** ✅ Implemented (V2: GPT generates dimensions + items, app fills rubrics)
 - **Undo/Redo:** Not implemented for item edits
