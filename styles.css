@@ -1137,7 +1137,7 @@ body.is-fullscreen .fullscreen-btn .icon-compress {
   position: relative;
   width: 100%;
   height: 100%;
-  overflow-x: auto;
+  overflow-x: hidden;
   overflow-y: hidden;
   cursor: grab;
   transform-origin: 0 0;
@@ -1204,7 +1204,6 @@ body.is-fullscreen .fullscreen-btn .icon-compress {
   letter-spacing: -0.01em;
   height: auto;
   overflow: visible;
-  outline: 2px solid red;
 }
 
 /* Specificity Override for Inner Content */

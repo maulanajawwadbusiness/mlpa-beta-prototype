@@ -160,17 +160,19 @@ ESTIMATED_HEIGHT = 180 // Height estimate per scale
 ROW_HEIGHT = 204       // Total row spacing (HEIGHT + GAP)
 ```
 
-**Position Calculation:**
+**Position Calculation (Symmetric Alternating):**
 ```javascript
-// For branch with index N from parent at (px, py):
-x = px + HORIZONTAL_GAP
-y = py + (branch_index + 1) * ROW_HEIGHT
+// Symmetric alternating: layer + direction derived from branch_index
+layer     = floor(branch_index / 2) + 1
+direction = 2 * (branch_index % 2) - 1   // -1 for even (up), +1 for odd (down)
+x         = parent.x + HORIZONTAL_GAP
+y         = parent.y + direction * layer * ROW_HEIGHT
 
-// Example:
-// Parent at (100, 100)
-// Branch 0: (550, 304)  // 100 + (0+1)*204
-// Branch 1: (550, 508)  // 100 + (1+1)*204
-// Branch 2: (550, 712)  // 100 + (2+1)*204
+// Truth table:
+// index 0: y = parent.y - 204  (up)
+// index 1: y = parent.y + 204  (down)
+// index 2: y = parent.y - 408  (further up)
+// index 3: y = parent.y + 408  (further down)
 ```
 
 **Key Methods:**
