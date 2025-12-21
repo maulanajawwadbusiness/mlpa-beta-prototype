@@ -228,6 +228,63 @@ body {
   cursor: not-allowed;
 }
 
+/* ==================== */
+/* Upload Loading State */
+/* ==================== */
+
+.upload-zone.processing {
+  pointer-events: none;
+  cursor: default;
+}
+
+.upload-zone.processing .content-block {
+  opacity: 0;
+  transform: scale(0.95);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.upload-loading-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.4s ease, visibility 0.4s ease;
+}
+
+.upload-zone.processing .upload-loading-overlay {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* Spinner */
+.upload-spinner {
+  width: 48px;
+  height: 48px;
+  border: 3px solid rgba(0, 0, 0, 0.08);
+  border-top-color: rgba(0, 0, 0, 0.5);
+  border-radius: 50%;
+  animation: upload-spin 0.9s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+@keyframes upload-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Loading text */
+.upload-loading-text {
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-muted);
+  letter-spacing: -0.01em;
+}
+
 .api-result {
   margin-top: 16px;
   font-size: var(--font-size-sm);
@@ -1653,11 +1710,7 @@ body.is-fullscreen .fullscreen-btn .icon-compress {
   border-color: #22c55e;
 }
 
-.item-box.integrity-expanded {
-  border-color: #eab308;
-}
-
-.item-box.integrity-drift {
+.item-box.integrity-mismatch {
   border-color: #ef4444;
 }
 
@@ -1897,4 +1950,223 @@ body.is-fullscreen .fullscreen-btn .icon-compress {
 .flow-mode .dimension-label-line {
   font-size: 0.58em !important;
   line-height: 0.95 !important;
+}
+
+/* ==================== */
+/* Offline Overlay */
+/* ==================== */
+
+.offline-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 20000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(8px);
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 0.4s ease, visibility 0.4s ease;
+}
+
+.offline-overlay.hidden {
+  opacity: 0;
+  visibility: hidden;
+}
+
+.offline-content {
+  text-align: center;
+  padding: var(--space-xl);
+}
+
+.offline-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+  opacity: 0.6;
+}
+
+.offline-title {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text);
+  margin: 0 0 8px 0;
+}
+
+.offline-message {
+  font-size: var(--font-size-base);
+  color: var(--color-text-muted);
+  margin: 0;
+}
+
+/* ==================== */
+/* Upload Error Modal */
+/* ==================== */
+
+.upload-error-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 20000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(4px);
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.upload-error-modal.hidden {
+  opacity: 0;
+  visibility: hidden;
+}
+
+.upload-error-content {
+  background: white;
+  border-radius: 16px;
+  padding: 32px;
+  max-width: 400px;
+  width: 90%;
+  text-align: center;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+  transform: scale(1);
+  transition: transform 0.3s ease;
+}
+
+.upload-error-modal.hidden .upload-error-content {
+  transform: scale(0.95);
+}
+
+.upload-error-title {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text);
+  margin: 0 0 12px 0;
+}
+
+.upload-error-message {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  margin: 0 0 24px 0;
+  line-height: 1.5;
+}
+
+.upload-error-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.upload-error-btn {
+  padding: 12px 24px;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  border: none;
+}
+
+.upload-error-btn.primary {
+  background: var(--color-text);
+  color: white;
+}
+
+.upload-error-btn.primary:hover {
+  background: #333;
+}
+
+.upload-error-btn.secondary {
+  background: rgba(0, 0, 0, 0.05);
+  color: var(--color-text);
+}
+
+.upload-error-btn.secondary:hover {
+  background: rgba(0, 0, 0, 0.1);
+}
+
+/* ==================== */
+/* Color Legend */
+/* ==================== */
+
+.color-legend {
+  position: absolute;
+  bottom: 20px;
+  left: 20px;
+  z-index: 100;
+  pointer-events: auto;
+}
+
+/* Ensure flow-canvas provides proper positioning context */
+.flow-canvas {
+  position: relative;
+}
+
+.color-legend-title {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+  opacity: 0;
+  transform: translateX(-4px);
+  transition: opacity 0.3s ease-out, transform 0.3s ease-out;
+}
+
+.color-legend:hover .color-legend-title {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.color-legend-items {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.color-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.color-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  transform: translateX(-1px);
+  transition: transform 0.3s ease-out;
+}
+
+.color-legend:hover .color-dot {
+  transform: translateX(0);
+}
+
+.color-dot.green {
+  background: #42c472;
+}
+
+.color-dot.red {
+  background: #ed6666;
+}
+
+.color-dot.blue {
+  background: #639af1;
+}
+
+.color-legend-text {
+  font-size: 11px;
+  color: var(--color-text);
+  opacity: 0;
+  transform: translateX(-4px);
+  transition: opacity 0.3s ease-out, transform 0.3s ease-out;
+  white-space: nowrap;
+}
+
+.color-legend:hover .color-legend-text {
+  opacity: 1;
+  transform: translateX(0);
 }

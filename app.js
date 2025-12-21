@@ -83,7 +83,59 @@
   function init() {
     cacheElements();
     bindEvents();
+    initOfflineDetection();
+    initUploadErrorModal();
     showScreen(1);
+  }
+
+  // ==================== NETWORK RESILIENCE ====================
+
+  function initOfflineDetection() {
+    const overlay = document.getElementById('offline-overlay');
+
+    // Check initial state
+    if (!navigator.onLine) {
+      overlay?.classList.remove('hidden');
+    }
+
+    // Listen for network changes
+    window.addEventListener('online', () => {
+      console.log('[MLPA] Network: Back online');
+      overlay?.classList.add('hidden');
+    });
+
+    window.addEventListener('offline', () => {
+      console.log('[MLPA] Network: Went offline');
+      overlay?.classList.remove('hidden');
+    });
+  }
+
+  function initUploadErrorModal() {
+    const modal = document.getElementById('upload-error-modal');
+    const mockBtn = document.getElementById('upload-error-mock');
+    const closeBtn = document.getElementById('upload-error-close');
+
+    mockBtn?.addEventListener('click', () => {
+      hideUploadErrorModal();
+      handleLoadMock();
+    });
+
+    closeBtn?.addEventListener('click', () => {
+      hideUploadErrorModal();
+    });
+  }
+
+  function showUploadErrorModal(message) {
+    const modal = document.getElementById('upload-error-modal');
+    const messageEl = document.getElementById('upload-error-message');
+
+    if (messageEl) messageEl.textContent = message;
+    modal?.classList.remove('hidden');
+  }
+
+  function hideUploadErrorModal() {
+    const modal = document.getElementById('upload-error-modal');
+    modal?.classList.add('hidden');
   }
 
   function cacheElements() {
@@ -448,6 +500,37 @@
 
   // ==================== FILE PROCESSING ====================
 
+  // Upload loading state management
+  let uploadLoadingInterval = null;
+
+  function showUploadLoading() {
+    const uploadZone = document.getElementById('upload-zone');
+    const loadingText = document.getElementById('upload-loading-text');
+
+    uploadZone?.classList.add('processing');
+
+    // Animated dots
+    let dotCount = 0;
+    if (loadingText) {
+      loadingText.textContent = 'Memproses skala.';
+      uploadLoadingInterval = setInterval(() => {
+        dotCount = (dotCount + 1) % 3;
+        const dots = '.'.repeat(dotCount + 1);
+        loadingText.textContent = 'Memproses skala' + dots;
+      }, 400);
+    }
+  }
+
+  function hideUploadLoading() {
+    const uploadZone = document.getElementById('upload-zone');
+    uploadZone?.classList.remove('processing');
+
+    if (uploadLoadingInterval) {
+      clearInterval(uploadLoadingInterval);
+      uploadLoadingInterval = null;
+    }
+  }
+
   async function handleFiles(files) {
     const file = files[0];
 
@@ -458,6 +541,7 @@
 
     clearError();
     state.isProcessing = true;
+    showUploadLoading();
 
     try {
       const content = await readFileAsText(file);
@@ -471,40 +555,164 @@
 
       console.log('[MLPA] Parsed CSV:', parsed);
 
-      // Try OpenAI API if configured
-      if (typeof OpenAIAPI !== 'undefined' && OpenAIAPI.isConfigured()) {
-        console.log('[MLPA] Sending to OpenAI for analysis...');
-        try {
-          const analysis = await OpenAIAPI.analyzeCSV(content);
-          console.log('[MLPA] OpenAI analysis result:', analysis);
+      let rootScale;
 
-          // Use OpenAI parsed items if available
-          if (analysis.items && Array.isArray(analysis.items)) {
-            state.items = analysis.items;
-          } else {
-            state.items = parsed.items;
+      // Try GPT structuring if configured
+      if (typeof OpenAIAPI !== 'undefined' && OpenAIAPI.isConfigured()) {
+        console.log('[MLPA] Calling GPT for scale structuring...');
+        const structured = await OpenAIAPI.structureCSVToScale(parsed.items, file.name);
+        console.log('[MLPA] GPT structuring result:', structured);
+
+        // Check sanity-check result
+        if (structured && structured.is_valid_scale === false) {
+          console.warn('[MLPA] CSV rejected - not a valid scale');
+          hideUploadLoading();
+          const reason = structured.rejection_reason || 'Skala tidak terdeteksi dalam CSV ini.';
+          showUploadErrorModal(reason);
+          return;
+        }
+
+        // Ask user confirmation if GPT needs to group items into dimensions
+        if (structured && structured.has_dimensions === false) {
+          console.log('[MLPA] CSV has no dimensions - asking user confirmation');
+          hideUploadLoading();
+
+          // Show confirmation modal and wait for user decision
+          const userConfirmed = await showDimensionConfirmModal();
+
+          if (!userConfirmed) {
+            console.log('[MLPA] User declined dimension grouping');
+            return; // User cancelled, stay on upload screen
           }
-        } catch (apiError) {
-          console.warn('[MLPA] OpenAI API call failed:', apiError.message);
-          state.items = parsed.items;
+
+          console.log('[MLPA] User confirmed dimension grouping');
+          showUploadLoading(); // Show loading again while we build the scale
+        }
+
+        if (structured && structured.dimensions && structured.dimensions.length > 0) {
+          rootScale = buildScaleFromGPT(structured, file.name);
+        } else {
+          console.warn('[MLPA] GPT structuring invalid, using fallback');
+          rootScale = createFallbackScale(parsed.items, file.name);
         }
       } else {
-        console.log('[MLPA] OpenAI API not configured, using local parse');
-        state.items = parsed.items;
+        console.log('[MLPA] OpenAI API not configured, using fallback');
+        rootScale = createFallbackScale(parsed.items, file.name);
       }
 
-      // Initialize questionnaire
-      initQuestionnaire();
+      // Clear existing scales (single CSV policy)
+      state.canvasState.scales.clear();
+
+      // Add to scale graph
+      state.canvasState.scales.set(rootScale.scale_id, rootScale);
+      state.canvasState.activeScaleId = rootScale.scale_id;
+
+      // Initialize preview via selectScale
+      selectScale(rootScale.scale_id);
+
+      console.log('[MLPA] Scale created and selected:', rootScale.scale_id);
+
+      // Hide loading before transition
+      hideUploadLoading();
 
       // Transition to main app
       showScreen(2);
 
     } catch (error) {
       console.error('[MLPA] File processing error:', error);
-      showError('Gagal membaca file. Coba lagi.');
+      hideUploadLoading();
+
+      // Show structured error message in modal
+      const errorMessage = error.message || error.type || 'Terjadi kesalahan. Coba lagi.';
+      showUploadErrorModal(errorMessage);
     } finally {
       state.isProcessing = false;
     }
+  }
+
+  // Show dimension confirmation modal and return promise
+  function showDimensionConfirmModal() {
+    return new Promise((resolve) => {
+      const modal = document.getElementById('dimension-confirm-modal');
+      const yesBtn = document.getElementById('dimension-confirm-yes');
+      const noBtn = document.getElementById('dimension-confirm-no');
+
+      modal.classList.remove('hidden');
+
+      const handleYes = () => {
+        modal.classList.add('hidden');
+        yesBtn.removeEventListener('click', handleYes);
+        noBtn.removeEventListener('click', handleNo);
+        resolve(true);
+      };
+
+      const handleNo = () => {
+        modal.classList.add('hidden');
+        yesBtn.removeEventListener('click', handleYes);
+        noBtn.removeEventListener('click', handleNo);
+        resolve(false);
+      };
+
+      yesBtn.addEventListener('click', handleYes);
+      noBtn.addEventListener('click', handleNo);
+    });
+  }
+
+  /**
+   * Build Scale object from GPT structuring result
+   */
+  function buildScaleFromGPT(gptResult, filename) {
+    return {
+      scale_id: 'imported-scale',
+      scale_name: gptResult.scale_name || filename.replace(/\.csv$/i, ''),
+      parent_scale_id: null,
+      is_root: true,
+      expanded: false,
+      depth: 0,
+      position: { x: 100, y: 250 },
+      dimensions: gptResult.dimensions.map(dim => ({
+        name: dim.name,
+        items: dim.items.map((item, i) => ({
+          item_id: item.item_id || `imported-${i + 1}`,
+          origin_item_id: item.item_id || `imported-${i + 1}`,
+          text: item.text,
+          baseline_rubric: item.baseline_rubric || [],
+          current_rubric: item.baseline_rubric || [],
+          dimension: dim.name
+        }))
+      }))
+    };
+  }
+
+  /**
+   * Create fallback Scale when GPT is unavailable
+   */
+  function createFallbackScale(parsedItems, filename) {
+    const scaleName = filename
+      .replace(/\.csv$/i, '')
+      .replace(/[_-]/g, ' ')
+      .replace(/\b\w/g, l => l.toUpperCase()) || 'Skala Impor';
+
+    return {
+      scale_id: 'imported-scale',
+      scale_name: scaleName,
+      parent_scale_id: null,
+      is_root: true,
+      expanded: false,
+      depth: 0,
+      position: { x: 100, y: 250 },
+      dimensions: [{
+        name: 'Item Impor',
+        items: parsedItems.map((item, i) => ({
+          item_id: item.item_id || `imported-${i + 1}`,
+          origin_item_id: item.item_id || `imported-${i + 1}`,
+          text: item.item_text || item.text || Object.values(item).find(v => typeof v === 'string' && v.length > 10) || '',
+          baseline_rubric: [],
+          current_rubric: [],
+          dimension: 'Item Impor'
+        }))
+      }]
+    };
   }
 
   function readFileAsText(file) {
@@ -832,8 +1040,8 @@
       item_id: '1',
       origin_item_id: '1',
       text: 'Saya merasa percaya diri dalam menghadapi tantangan baru',
-      baseline_rubric: ['Kepercayaan Diri', 'Menghadapi Tantangan Baru', 'Merasa', 'Sudut Pandang Orang Pertama'],
-      current_rubric: ['Kepercayaan Diri', 'Menghadapi Tantangan Baru', 'Merasa', 'Sudut Pandang Orang Pertama'],
+      baseline_rubric: ['Kepercayaan diri', 'Menghadapi tantangan', 'Merasa', 'Konteks: Situasi baru', 'Sudut pandang orang pertama'],
+      current_rubric: ['Kepercayaan diri', 'Menghadapi tantangan', 'Merasa', 'Konteks: Situasi baru', 'Sudut pandang orang pertama'],
       dimension: 'Kepercayaan Diri',
       scale_group: 'asli'
     },
@@ -841,8 +1049,8 @@
       item_id: '2',
       origin_item_id: '2',
       text: 'Saya merasa bernilai dan dihargai oleh orang lain',
-      baseline_rubric: ['Nilai Diri', 'Dihargai oleh Orang Lain', 'Merasa', 'Sudut Pandang Orang Pertama'],
-      current_rubric: ['Nilai Diri', 'Dihargai oleh Orang Lain', 'Merasa', 'Sudut Pandang Orang Pertama'],
+      baseline_rubric: ['Nilai diri', 'Dihargai', 'Merasa', 'Oleh orang lain', 'Sudut pandang orang pertama'],
+      current_rubric: ['Nilai diri', 'Dihargai', 'Merasa', 'Oleh orang lain', 'Sudut pandang orang pertama'],
       dimension: 'Kepercayaan Diri',
       scale_group: 'asli'
     },
@@ -850,8 +1058,8 @@
       item_id: '3',
       origin_item_id: '3',
       text: 'Saya dapat mengatasi masalah dengan baik dan tenang',
-      baseline_rubric: ['Kemampuan Mengatasi Masalah', 'Ketenangan', 'Kemampuan (Dapat)', 'Sudut Pandang Orang Pertama'],
-      current_rubric: ['Kemampuan Mengatasi Masalah', 'Ketenangan', 'Kemampuan (Dapat)', 'Sudut Pandang Orang Pertama'],
+      baseline_rubric: ['Mengatasi masalah', 'Ketenangan', 'Dapat', 'Sudut pandang orang pertama'],
+      current_rubric: ['Mengatasi masalah', 'Ketenangan', 'Dapat', 'Sudut pandang orang pertama'],
       dimension: 'Kepercayaan Diri',
       scale_group: 'asli'
     },
@@ -860,8 +1068,8 @@
       item_id: '4',
       origin_item_id: '4',
       text: 'Saya mampu mengekspresikan perasaan saya dengan jelas',
-      baseline_rubric: ['Ekspresi Perasaan', 'Kejelasan', 'Kemampuan (Mampu)', 'Sudut Pandang Orang Pertama'],
-      current_rubric: ['Ekspresi Perasaan', 'Kejelasan', 'Kemampuan (Mampu)', 'Sudut Pandang Orang Pertama'],
+      baseline_rubric: ['Ekspresi perasaan', 'Kejelasan', 'Mampu', 'Sudut pandang orang pertama'],
+      current_rubric: ['Ekspresi perasaan', 'Kejelasan', 'Mampu', 'Sudut pandang orang pertama'],
       dimension: 'Regulasi Emosi',
       scale_group: 'asli'
     },
@@ -869,8 +1077,8 @@
       item_id: '5',
       origin_item_id: '5',
       text: 'Saya merasa nyaman ketika berinteraksi dengan orang baru',
-      baseline_rubric: ['Kenyamanan', 'Interaksi dengan Orang Baru', 'Merasa', 'Sudut Pandang Orang Pertama'],
-      current_rubric: ['Kenyamanan', 'Interaksi dengan Orang Baru', 'Merasa', 'Sudut Pandang Orang Pertama'],
+      baseline_rubric: ['Kenyamanan', 'Interaksi sosial', 'Merasa', 'Konteks: Orang baru', 'Sudut pandang orang pertama'],
+      current_rubric: ['Kenyamanan', 'Interaksi sosial', 'Merasa', 'Konteks: Orang baru', 'Sudut pandang orang pertama'],
       dimension: 'Regulasi Emosi',
       scale_group: 'asli'
     },
@@ -878,8 +1086,8 @@
       item_id: '6',
       origin_item_id: '6',
       text: 'Saya dapat menerima kritik dengan sikap terbuka',
-      baseline_rubric: ['Penerimaan Kritik', 'Keterbukaan Sikap', 'Kemampuan (Dapat)', 'Sudut Pandang Orang Pertama'],
-      current_rubric: ['Penerimaan Kritik', 'Keterbukaan Sikap', 'Kemampuan (Dapat)', 'Sudut Pandang Orang Pertama'],
+      baseline_rubric: ['Penerimaan kritik', 'Keterbukaan', 'Dapat', 'Sudut pandang orang pertama'],
+      current_rubric: ['Penerimaan kritik', 'Keterbukaan', 'Dapat', 'Sudut pandang orang pertama'],
       dimension: 'Regulasi Emosi',
       scale_group: 'asli'
     },
@@ -887,8 +1095,8 @@
       item_id: '7',
       origin_item_id: '7',
       text: 'Saya mampu mengelola stres dengan efektif',
-      baseline_rubric: ['Pengelolaan Stres', 'Efektivitas', 'Kemampuan (Mampu)', 'Sudut Pandang Orang Pertama'],
-      current_rubric: ['Pengelolaan Stres', 'Efektivitas', 'Kemampuan (Mampu)', 'Sudut Pandang Orang Pertama'],
+      baseline_rubric: ['Pengelolaan stres', 'Efektivitas', 'Mampu', 'Sudut pandang orang pertama'],
+      current_rubric: ['Pengelolaan stres', 'Efektivitas', 'Mampu', 'Sudut pandang orang pertama'],
       dimension: 'Regulasi Emosi',
       scale_group: 'asli'
     },
@@ -897,8 +1105,8 @@
       item_id: '8',
       origin_item_id: '8',
       text: 'Saya merasa optimis tentang masa depan saya',
-      baseline_rubric: ['Optimisme', 'Masa Depan Diri', 'Merasa', 'Sudut Pandang Orang Pertama'],
-      current_rubric: ['Optimisme', 'Masa Depan Diri', 'Merasa', 'Sudut Pandang Orang Pertama'],
+      baseline_rubric: ['Optimisme', 'Merasa', 'Waktu: Masa depan', 'Sudut pandang orang pertama'],
+      current_rubric: ['Optimisme', 'Merasa', 'Waktu: Masa depan', 'Sudut pandang orang pertama'],
       dimension: 'Optimisme',
       scale_group: 'asli'
     },
@@ -915,8 +1123,8 @@
       item_id: '10',
       origin_item_id: '10',
       text: 'Saya merasa memiliki tujuan hidup yang jelas',
-      baseline_rubric: ['Tujuan Hidup', 'Kejelasan Tujuan', 'Merasa', 'Sudut Pandang Orang Pertama'],
-      current_rubric: ['Tujuan Hidup', 'Kejelasan Tujuan', 'Merasa', 'Sudut Pandang Orang Pertama'],
+      baseline_rubric: ['Tujuan hidup', 'Merasa', 'Sudut pandang orang pertama'],
+      current_rubric: ['Tujuan hidup', 'Merasa', 'Sudut pandang orang pertama'],
       dimension: 'Optimisme',
       scale_group: 'asli'
     },
@@ -927,8 +1135,8 @@
       item_id: 'skala-asli-branch-1-item-1',
       origin_item_id: '1',
       text: 'Saya berani mencoba hal baru tanpa ragu',
-      baseline_rubric: ['Kepercayaan Diri', 'Menghadapi Tantangan Baru', 'Merasa', 'Sudut Pandang Orang Pertama'],
-      current_rubric: ['Kepercayaan Diri', 'Menghadapi Tantangan Baru', 'Merasa', 'Sudut Pandang Orang Pertama'],
+      baseline_rubric: ['Kepercayaan diri', 'Menghadapi tantangan', 'Merasa', 'Konteks: Situasi baru', 'Sudut pandang orang pertama'],
+      current_rubric: ['Keberanian', 'Mencoba hal baru', 'Tanpa keraguan', 'Sudut pandang orang pertama'],
       dimension: 'Kepercayaan Diri & Keberanian',
       scale_group: 'genz'
     },
@@ -936,8 +1144,8 @@
       item_id: 'skala-asli-branch-1-item-2',
       origin_item_id: '2',
       text: 'Saya merasa dihargai dan berarti di lingkungan saya',
-      baseline_rubric: ['Nilai Diri', 'Dihargai oleh Orang Lain', 'Merasa', 'Sudut Pandang Orang Pertama'],
-      current_rubric: ['Nilai Diri', 'Dihargai oleh Orang Lain', 'Merasa', 'Sudut Pandang Orang Pertama'],
+      baseline_rubric: ['Nilai diri', 'Dihargai', 'Merasa', 'Oleh orang lain', 'Sudut pandang orang pertama'],
+      current_rubric: ['Nilai diri', 'Dihargai', 'Merasa', 'Konteks: Lingkungan', 'Sudut pandang orang pertama'],
       dimension: 'Kepercayaan Diri & Keberanian',
       scale_group: 'genz'
     },
@@ -945,8 +1153,8 @@
       item_id: 'skala-asli-branch-1-item-3',
       origin_item_id: '3',
       text: 'Saya bisa mengatasi masalah dengan kepala dingin dan percaya diri',
-      baseline_rubric: ['Kemampuan Mengatasi Masalah', 'Ketenangan', 'Kemampuan (Dapat)', 'Sudut Pandang Orang Pertama'],
-      current_rubric: ['Kemampuan Mengatasi Masalah', 'Ketenangan', 'Kemampuan (Dapat)', 'Sudut Pandang Orang Pertama'],
+      baseline_rubric: ['Mengatasi masalah', 'Ketenangan', 'Dapat', 'Sudut pandang orang pertama'],
+      current_rubric: ['Mengatasi masalah', 'Ketenangan', 'Kepercayaan diri', 'Bisa', 'Sudut pandang orang pertama'],
       dimension: 'Kepercayaan Diri & Keberanian',
       scale_group: 'genz'
     },
@@ -955,8 +1163,8 @@
       item_id: 'skala-asli-branch-1-item-4',
       origin_item_id: '4',
       text: 'Saya bisa mengekspresikan perasaan saya secara jujur dan jelas',
-      baseline_rubric: ['Ekspresi Perasaan', 'Kejelasan', 'Kemampuan (Mampu)', 'Sudut Pandang Orang Pertama'],
-      current_rubric: ['Ekspresi Perasaan', 'Kejelasan', 'Kemampuan (Mampu)', 'Sudut Pandang Orang Pertama'],
+      baseline_rubric: ['Ekspresi perasaan', 'Kejelasan', 'Mampu', 'Sudut pandang orang pertama'],
+      current_rubric: ['Ekspresi perasaan', 'Kejujuran', 'Kejelasan', 'Bisa', 'Sudut pandang orang pertama'],
       dimension: 'Regulasi Emosi & Interaksi',
       scale_group: 'genz'
     },
@@ -964,8 +1172,8 @@
       item_id: 'skala-asli-branch-1-item-5',
       origin_item_id: '5',
       text: 'Saya merasa nyaman dan tidak awkward saat bertemu orang baru',
-      baseline_rubric: ['Kenyamanan', 'Interaksi dengan Orang Baru', 'Merasa', 'Sudut Pandang Orang Pertama'],
-      current_rubric: ['Kenyamanan', 'Interaksi dengan Orang Baru', 'Merasa', 'Sudut Pandang Orang Pertama'],
+      baseline_rubric: ['Kenyamanan', 'Interaksi sosial', 'Merasa', 'Konteks: Orang baru', 'Sudut pandang orang pertama'],
+      current_rubric: ['Kenyamanan', 'Tidak canggung', 'Merasa', 'Konteks: Orang baru', 'Sudut pandang orang pertama'],
       dimension: 'Regulasi Emosi & Interaksi',
       scale_group: 'genz'
     },
@@ -973,8 +1181,8 @@
       item_id: 'skala-asli-branch-1-item-6',
       origin_item_id: '6',
       text: 'Saya bisa menerima kritik tanpa baper dan belajar darinya',
-      baseline_rubric: ['Penerimaan Kritik', 'Keterbukaan Sikap', 'Kemampuan (Dapat)', 'Sudut Pandang Orang Pertama'],
-      current_rubric: ['Penerimaan Kritik', 'Keterbukaan Sikap', 'Kemampuan (Dapat)', 'Sudut Pandang Orang Pertama'],
+      baseline_rubric: ['Penerimaan kritik', 'Keterbukaan', 'Dapat', 'Sudut pandang orang pertama'],
+      current_rubric: ['Penerimaan kritik', 'Stabilitas emosi', 'Belajar', 'Bisa', 'Sudut pandang orang pertama'],
       dimension: 'Regulasi Emosi & Interaksi',
       scale_group: 'genz'
     },
@@ -982,8 +1190,8 @@
       item_id: 'skala-asli-branch-1-item-7',
       origin_item_id: '7',
       text: 'Saya mampu mengatur stres agar tidak merasa overwhelmed',
-      baseline_rubric: ['Pengelolaan Stres', 'Efektivitas', 'Kemampuan (Mampu)', 'Sudut Pandang Orang Pertama'],
-      current_rubric: ['Pengelolaan Stres', 'Efektivitas', 'Kemampuan (Mampu)', 'Sudut Pandang Orang Pertama'],
+      baseline_rubric: ['Pengelolaan stres', 'Efektivitas', 'Mampu', 'Sudut pandang orang pertama'],
+      current_rubric: ['Pengelolaan stres', 'Menghindari kewalahan', 'Mampu', 'Sudut pandang orang pertama'],
       dimension: 'Regulasi Emosi & Interaksi',
       scale_group: 'genz'
     },
@@ -992,8 +1200,8 @@
       item_id: 'skala-asli-branch-1-item-8',
       origin_item_id: '8',
       text: 'Saya optimis tentang masa depan dan peluang yang akan datang',
-      baseline_rubric: ['Optimisme', 'Masa Depan Diri', 'Merasa', 'Sudut Pandang Orang Pertama'],
-      current_rubric: ['Optimisme', 'Masa Depan Diri', 'Merasa', 'Sudut Pandang Orang Pertama'],
+      baseline_rubric: ['Optimisme', 'Merasa', 'Waktu: Masa depan', 'Sudut pandang orang pertama'],
+      current_rubric: ['Optimisme', 'Peluang', 'Merasa', 'Waktu: Masa depan', 'Sudut pandang orang pertama'],
       dimension: 'Optimisme dan Tujuan (Goals)',
       scale_group: 'genz'
     },
@@ -1001,8 +1209,8 @@
       item_id: 'skala-asli-branch-1-item-9',
       origin_item_id: '9',
       text: 'Saya merasa bangga dan puas dengan pencapaian saya sejauh ini',
-      baseline_rubric: ['Kepuasan', 'Pencapaian Hidup', 'Merasa', 'Sudut Pandang Orang Pertama', 'Waktu: Sejauh Ini'],
-      current_rubric: ['Kepuasan', 'Pencapaian Hidup', 'Merasa', 'Sudut Pandang Orang Pertama', 'Waktu: Sejauh Ini'],
+      baseline_rubric: ['Kepuasan', 'Pencapaian hidup', 'Merasa', 'Waktu: Sejauh ini', 'Sudut pandang orang pertama'],
+      current_rubric: ['Kepuasan', 'Kebanggaan', 'Pencapaian', 'Merasa', 'Waktu: Sejauh ini', 'Sudut pandang orang pertama'],
       dimension: 'Optimisme dan Tujuan (Goals)',
       scale_group: 'genz'
     },
@@ -1010,8 +1218,8 @@
       item_id: 'skala-asli-branch-1-item-10',
       origin_item_id: '10',
       text: 'Saya memiliki tujuan hidup atau goals yang jelas untuk dicapai',
-      baseline_rubric: ['Tujuan Hidup', 'Kejelasan Tujuan', 'Merasa', 'Sudut Pandang Orang Pertama'],
-      current_rubric: ['Tujuan Hidup', 'Kejelasan Tujuan', 'Merasa', 'Sudut Pandang Orang Pertama'],
+      baseline_rubric: ['Tujuan hidup', 'Kejelasan', 'Memiliki', 'Sudut pandang orang pertama'],
+      current_rubric: ['Tujuan hidup', 'Goals', 'Kejelasan', 'Memiliki', 'Sudut pandang orang pertama'],
       dimension: 'Optimisme dan Tujuan (Goals)',
       scale_group: 'genz'
     },
@@ -1022,8 +1230,8 @@
       item_id: 'skala-asli-branch-2-item-1',
       origin_item_id: '1',
       text: 'Saya merasa percaya diri menghadapi perubahan dan tantangan yang muncul pada usia saya',
-      baseline_rubric: ['Kepercayaan Diri', 'Menghadapi Tantangan Baru', 'Merasa', 'Sudut Pandang Orang Pertama'],
-      current_rubric: ['Kepercayaan Diri', 'Menghadapi Tantangan Baru', 'Merasa', 'Sudut Pandang Orang Pertama'],
+      baseline_rubric: ['Kepercayaan diri', 'Menghadapi tantangan', 'Merasa', 'Konteks: Situasi baru', 'Sudut pandang orang pertama'],
+      current_rubric: ['Kepercayaan diri', 'Menghadapi perubahan', 'Menghadapi tantangan', 'Merasa', 'Konteks: Usia', 'Sudut pandang orang pertama'],
       dimension: 'Kepercayaan Diri pada Usia Boomer',
       scale_group: 'boomer'
     },
@@ -1031,8 +1239,8 @@
       item_id: 'skala-asli-branch-2-item-2',
       origin_item_id: '2',
       text: 'Saya merasa dihargai dan dianggap berarti oleh keluarga dan komunitas saya',
-      baseline_rubric: ['Nilai Diri', 'Dihargai oleh Orang Lain', 'Merasa', 'Sudut Pandang Orang Pertama'],
-      current_rubric: ['Nilai Diri', 'Dihargai oleh Orang Lain', 'Merasa', 'Sudut Pandang Orang Pertama'],
+      baseline_rubric: ['Nilai diri', 'Dihargai', 'Merasa', 'Oleh orang lain', 'Sudut pandang orang pertama'],
+      current_rubric: ['Nilai diri', 'Dihargai', 'Merasa', 'Konteks: Keluarga', 'Konteks: Komunitas', 'Sudut pandang orang pertama'],
       dimension: 'Kepercayaan Diri pada Usia Boomer',
       scale_group: 'boomer'
     },
@@ -1040,8 +1248,8 @@
       item_id: 'skala-asli-branch-2-item-3',
       origin_item_id: '3',
       text: 'Saya mampu menyelesaikan masalah sehari-hari dan menghadapi situasi sulit dengan tenang',
-      baseline_rubric: ['Kemampuan Mengatasi Masalah', 'Ketenangan', 'Kemampuan (Dapat)', 'Sudut Pandang Orang Pertama'],
-      current_rubric: ['Kemampuan Mengatasi Masalah', 'Ketenangan', 'Kemampuan (Dapat)', 'Sudut Pandang Orang Pertama'],
+      baseline_rubric: ['Mengatasi masalah', 'Ketenangan', 'Dapat', 'Sudut pandang orang pertama'],
+      current_rubric: ['Menyelesaikan masalah', 'Menghadapi situasi sulit', 'Ketenangan', 'Mampu', 'Konteks: Sehari-hari', 'Sudut pandang orang pertama'],
       dimension: 'Kepercayaan Diri pada Usia Boomer',
       scale_group: 'boomer'
     },
@@ -1050,8 +1258,8 @@
       item_id: 'skala-asli-branch-2-item-4',
       origin_item_id: '4',
       text: 'Saya dapat mengungkapkan perasaan saya kepada keluarga atau teman dengan jujur dan tepat',
-      baseline_rubric: ['Ekspresi Perasaan', 'Kejelasan', 'Kemampuan (Mampu)', 'Sudut Pandang Orang Pertama'],
-      current_rubric: ['Ekspresi Perasaan', 'Kejelasan', 'Kemampuan (Mampu)', 'Sudut Pandang Orang Pertama'],
+      baseline_rubric: ['Ekspresi perasaan', 'Kejelasan', 'Mampu', 'Sudut pandang orang pertama'],
+      current_rubric: ['Ekspresi perasaan', 'Kejujuran', 'Ketepatan', 'Dapat', 'Konteks: Keluarga/teman', 'Sudut pandang orang pertama'],
       dimension: 'Regulasi Emosi dan Interaksi Sosial',
       scale_group: 'boomer'
     },
@@ -1059,8 +1267,8 @@
       item_id: 'skala-asli-branch-2-item-5',
       origin_item_id: '5',
       text: 'Saya merasa nyaman saat berinteraksi dengan orang baru, termasuk yang berasal dari generasi berbeda',
-      baseline_rubric: ['Kenyamanan', 'Interaksi dengan Orang Baru', 'Merasa', 'Sudut Pandang Orang Pertama'],
-      current_rubric: ['Kenyamanan', 'Interaksi dengan Orang Baru', 'Merasa', 'Sudut Pandang Orang Pertama'],
+      baseline_rubric: ['Kenyamanan', 'Interaksi sosial', 'Merasa', 'Konteks: Orang baru', 'Sudut pandang orang pertama'],
+      current_rubric: ['Kenyamanan', 'Interaksi sosial', 'Merasa', 'Konteks: Orang baru', 'Konteks: Generasi berbeda', 'Sudut pandang orang pertama'],
       dimension: 'Regulasi Emosi dan Interaksi Sosial',
       scale_group: 'boomer'
     },
@@ -1068,8 +1276,8 @@
       item_id: 'skala-asli-branch-2-item-6',
       origin_item_id: '6',
       text: 'Saya menerima masukan atau kritik dari orang lain dengan sikap terbuka dan bijaksana',
-      baseline_rubric: ['Penerimaan Kritik', 'Keterbukaan Sikap', 'Kemampuan (Dapat)', 'Sudut Pandang Orang Pertama'],
-      current_rubric: ['Penerimaan Kritik', 'Keterbukaan Sikap', 'Kemampuan (Dapat)', 'Sudut Pandang Orang Pertama'],
+      baseline_rubric: ['Penerimaan kritik', 'Keterbukaan', 'Dapat', 'Sudut pandang orang pertama'],
+      current_rubric: ['Penerimaan kritik', 'Keterbukaan', 'Kebijaksanaan', 'Menerima', 'Sudut pandang orang pertama'],
       dimension: 'Regulasi Emosi dan Interaksi Sosial',
       scale_group: 'boomer'
     },
@@ -1077,8 +1285,8 @@
       item_id: 'skala-asli-branch-2-item-7',
       origin_item_id: '7',
       text: 'Saya mampu mengelola stres terkait kesehatan, tanggung jawab keluarga, atau perubahan hidup secara efektif',
-      baseline_rubric: ['Pengelolaan Stres', 'Efektivitas', 'Kemampuan (Mampu)', 'Sudut Pandang Orang Pertama'],
-      current_rubric: ['Pengelolaan Stres', 'Efektivitas', 'Kemampuan (Mampu)', 'Sudut Pandang Orang Pertama'],
+      baseline_rubric: ['Pengelolaan stres', 'Efektivitas', 'Mampu', 'Sudut pandang orang pertama'],
+      current_rubric: ['Pengelolaan stres', 'Efektivitas', 'Mampu', 'Konteks: Kesehatan', 'Konteks: Keluarga', 'Konteks: Perubahan hidup', 'Sudut pandang orang pertama'],
       dimension: 'Regulasi Emosi dan Interaksi Sosial',
       scale_group: 'boomer'
     },
@@ -1087,8 +1295,8 @@
       item_id: 'skala-asli-branch-2-item-8',
       origin_item_id: '8',
       text: 'Saya merasa optimis tentang kualitas hidup dan kesejahteraan saya di masa mendatang',
-      baseline_rubric: ['Optimisme', 'Masa Depan Diri', 'Merasa', 'Sudut Pandang Orang Pertama'],
-      current_rubric: ['Optimisme', 'Masa Depan Diri', 'Merasa', 'Sudut Pandang Orang Pertama'],
+      baseline_rubric: ['Optimisme', 'Merasa', 'Waktu: Masa depan', 'Sudut pandang orang pertama'],
+      current_rubric: ['Optimisme', 'Kualitas hidup', 'Kesejahteraan', 'Merasa', 'Waktu: Masa depan', 'Sudut pandang orang pertama'],
       dimension: 'Optimisme dan Makna Hidup',
       scale_group: 'boomer'
     },
@@ -1096,8 +1304,8 @@
       item_id: 'skala-asli-branch-2-item-9',
       origin_item_id: '9',
       text: 'Saya merasa puas dan bangga dengan pencapaian hidup serta peran yang telah saya jalani',
-      baseline_rubric: ['Kepuasan', 'Pencapaian Hidup', 'Merasa', 'Sudut Pandang Orang Pertama', 'Waktu: Sejauh Ini'],
-      current_rubric: ['Kepuasan', 'Pencapaian Hidup', 'Merasa', 'Sudut Pandang Orang Pertama', 'Waktu: Sejauh Ini'],
+      baseline_rubric: ['Kepuasan', 'Pencapaian hidup', 'Merasa', 'Waktu: Sejauh ini', 'Sudut pandang orang pertama'],
+      current_rubric: ['Kepuasan', 'Kebanggaan', 'Pencapaian hidup', 'Peran', 'Merasa', 'Sudut pandang orang pertama'],
       dimension: 'Optimisme dan Makna Hidup',
       scale_group: 'boomer'
     },
@@ -1105,8 +1313,8 @@
       item_id: 'skala-asli-branch-2-item-10',
       origin_item_id: '10',
       text: 'Saya memiliki tujuan atau kegiatan yang memberi arti dan semangat pada kehidupan saya saat ini',
-      baseline_rubric: ['Tujuan Hidup', 'Kejelasan Tujuan', 'Merasa', 'Sudut Pandang Orang Pertama'],
-      current_rubric: ['Tujuan Hidup', 'Kejelasan Tujuan', 'Merasa', 'Sudut Pandang Orang Pertama'],
+      baseline_rubric: ['Tujuan hidup', 'Kejelasan', 'Memiliki', 'Sudut pandang orang pertama'],
+      current_rubric: ['Tujuan hidup', 'Kegiatan bermakna', 'Semangat', 'Memiliki', 'Waktu: Saat ini', 'Sudut pandang orang pertama'],
       dimension: 'Optimisme dan Makna Hidup',
       scale_group: 'boomer'
     }
@@ -1283,7 +1491,6 @@
 
     updateCanvasTransform() {
       if (this.worldLayer) {
-        console.log('[Flow Transform] Updating transform:', state.canvasState.pan);
         this.worldLayer.style.transform = `translate(${state.canvasState.pan.x}px, ${state.canvasState.pan.y}px)`;
       }
     },
@@ -1346,7 +1553,7 @@
       const dimensionsHtml = dimensions.map((dim, index) => {
         const safeDimension = dim && typeof dim === 'object' ? dim : {};
         const items = Array.isArray(safeDimension.items) ? safeDimension.items : [];
-        const html = this.createDimensionHtml({ ...safeDimension, items }, index + 1, globalItemIndex);
+        const html = this.createDimensionHtml({ ...safeDimension, items }, index + 1, globalItemIndex, scale);
         globalItemIndex += items.length;
         return html;
       }).join('');
@@ -1391,10 +1598,10 @@
       `;
     },
 
-    createDimensionHtml(dimension, index, startItemIndex) {
+    createDimensionHtml(dimension, index, startItemIndex, scale) {
       const safeDimension = dimension && typeof dimension === 'object' ? dimension : {};
       const items = Array.isArray(safeDimension.items) ? safeDimension.items : [];
-      const itemsHtml = items.map((item, idx) => this.createItemHtml(item, startItemIndex + idx)).join('');
+      const itemsHtml = items.map((item, idx) => this.createItemHtml(item, startItemIndex + idx, scale)).join('');
       const dimensionName = typeof safeDimension.name === 'string' ? safeDimension.name : '';
 
       return `
@@ -1410,9 +1617,9 @@
       `;
     },
 
-    createItemHtml(item, itemIndex) {
+    createItemHtml(item, itemIndex, scale) {
       const safeItem = item && typeof item === 'object' ? item : {};
-      const integrityClass = this.getIntegrityClass(safeItem);
+      const integrityClass = this.getIntegrityClass(safeItem, scale);
       const rubricHtml = this.createRubricPopupHtml(safeItem);
       const itemId = safeItem.item_id ?? '';
       const itemText = safeItem.text ?? '';
@@ -1450,24 +1657,21 @@
       `;
     },
 
-    getIntegrityClass(item) {
+    getIntegrityClass(item, scale) {
+      // Don't show outline for root scales
+      if (scale && scale.is_root) return '';
+
       // Compare baseline and current rubric
       if (!item.baseline_rubric || !item.current_rubric) return '';
       if (item.baseline_rubric.length === 0 && item.current_rubric.length === 0) return '';
 
-      const baselineSet = new Set(item.baseline_rubric);
-      const currentSet = new Set(item.current_rubric);
+      // Check if arrays are identical
+      const isIdentical =
+        item.baseline_rubric.length === item.current_rubric.length &&
+        item.baseline_rubric.every((trait, i) => trait === item.current_rubric[i]);
 
-      // Check for drift (baseline traits missing)
-      const missingFromBaseline = [...baselineSet].filter(b => !currentSet.has(b));
-      if (missingFromBaseline.length > 0) return 'integrity-drift';
-
-      // Check for expansion (current has added traits)
-      const addedToCurrent = [...currentSet].filter(c => !baselineSet.has(c));
-      if (addedToCurrent.length > 0) return 'integrity-expanded';
-
-      // Stable
-      return 'integrity-stable';
+      // Green = match, Red = mismatch
+      return isIdentical ? 'integrity-stable' : 'integrity-mismatch';
     },
 
     bindFlowBoxEvents() {
@@ -1850,10 +2054,10 @@
     },
 
     /**
-     * Expand GPT items with mock rubrics (V2)
-     * @param {Array} gptDimensions - [{ name, items: [{ text }] }]
+     * Expand GPT items with rubrics (V2)
+     * @param {Array} gptDimensions - [{ name, items: [{ text, current_rubric? }] }]
      * @param {string} scaleId - Scale ID for namespacing
-     * @param {Array} sourceDimensions - Source dimensions for origin_item_id mapping
+     * @param {Array} sourceDimensions - Source dimensions for origin_item_id and baseline_rubric mapping
      * @returns {Array} Full dimensions with all required fields
      */
     expandWithMockRubrics(gptDimensions, scaleId, sourceDimensions) {
@@ -1861,20 +2065,30 @@
       return gptDimensions.map((dim, dimIndex) => {
         const sourceItems = sourceDimensions[dimIndex]?.items || [];
 
-        // Warn if item count mismatch (removed - now in validateGptScale)
-
         return {
           name: dim.name,
-          items: dim.items.map((item, itemIndex) => ({
-            item_id: `${scaleId}-item-${itemCounter++}`,
-            origin_item_id: sourceItems[itemIndex]?.item_id || 'unknown',
-            text: item.text,
-            baseline_rubric: sourceItems[itemIndex]?.baseline_rubric || ['Mock Rubric'],
-            current_rubric: sourceItems[itemIndex]?.baseline_rubric || ['Mock Rubric'],
-            dimension: dim.name,
-            // Rubric source tracking (future: "gpt", "manual", "edited", "imported")
-            rubric_source: 'parent'  // V2: copied from parent scale
-          }))
+          items: dim.items.map((item, itemIndex) => {
+            const sourceItem = sourceItems[itemIndex];
+
+            // baseline_rubric: ALWAYS from source (root scale, never changes)
+            const baseline_rubric = sourceItem?.baseline_rubric || ['Mock Rubric'];
+
+            // current_rubric: GPT's raw traits from adapted sentence (or fallback to baseline)
+            // GPT should extract these fresh from the new sentence, NOT copy baseline
+            const current_rubric = item.current_rubric && item.current_rubric.length > 0
+              ? item.current_rubric  // GPT provided raw traits from adapted sentence
+              : baseline_rubric;     // Fallback if GPT didn't provide
+
+            return {
+              item_id: `${scaleId}-item-${itemCounter++}`,
+              origin_item_id: sourceItem?.item_id || 'unknown',
+              text: item.text,
+              baseline_rubric: baseline_rubric,
+              current_rubric: current_rubric,
+              dimension: dim.name,
+              rubric_source: item.current_rubric ? 'gpt' : 'parent'
+            };
+          })
         };
       });
     },
@@ -1922,6 +2136,12 @@
     },
 
     async handleBranchingSubmit() {
+      // Guard: prevent double-submission
+      if (state.canvasState.isBranchingInProgress) {
+        console.log('[MLPA Branching] Already in progress - ignoring');
+        return;
+      }
+
       // Get input
       const input = document.getElementById('branching-input');
       const submitBtn = document.getElementById('branching-submit');
@@ -1941,6 +2161,9 @@
         console.error('[MLPA Branching] Source scale not found');
         return;
       }
+
+      // Set lock BEFORE any async operation
+      state.canvasState.isBranchingInProgress = true;
 
       // Show loading state with animated dots
       if (submitBtn) {
@@ -1998,9 +2221,14 @@
         console.log('[MLPA Branching] Branch created successfully:', newScaleId);
 
       } catch (error) {
-        console.error('[MLPA Branching] Unexpected error:', error);
-        this.showBranchingError(error.message || 'Unknown error');
+        console.error('[MLPA Branching] Error:', error);
+        // Show user-friendly message from structured error
+        const errorMessage = error.message || error.type || 'Terjadi kesalahan. Coba lagi.';
+        this.showBranchingError(errorMessage);
       } finally {
+        // Release lock
+        state.canvasState.isBranchingInProgress = false;
+
         // Reset button state
         if (submitBtn) {
           this.stopLoadingDots();

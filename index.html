@@ -27,6 +27,11 @@
         <p class="error-message" id="error-message" role="alert" aria-live="polite"></p>
         <button class="test-api-btn" id="test-mock-btn">Tes Prototype dengan Data Mockup yang Ada</button>
       </div>
+      <!-- Loading overlay -->
+      <div class="upload-loading-overlay" id="upload-loading-overlay">
+        <div class="upload-spinner"></div>
+        <span class="upload-loading-text" id="upload-loading-text">Memproses skala.</span>
+      </div>
     </div>
     <input type="file" id="file-input" class="file-input" accept=".csv" aria-hidden="true">
   </section>
@@ -204,6 +209,25 @@
 
         <!-- Flow Canvas (Pannable) -->
         <div id="flow-canvas" class="flow-canvas">
+          <!-- Color Legend (fixed to canvas viewport) -->
+          <div class="color-legend">
+            <div class="color-legend-title">Kode Warna</div>
+            <div class="color-legend-items">
+              <div class="color-legend-item">
+                <span class="color-dot green"></span>
+                <span class="color-legend-text">Rubrik cocok dengan item asli</span>
+              </div>
+              <div class="color-legend-item">
+                <span class="color-dot red"></span>
+                <span class="color-legend-text">Rubrik tidak cocok dengan item asli</span>
+              </div>
+              <div class="color-legend-item">
+                <span class="color-dot blue"></span>
+                <span class="color-legend-text">Mode edit</span>
+              </div>
+            </div>
+          </div>
+
           <!-- World Layer (receives transform for panning) -->
           <div id="flow-world" class="flow-world">
             <!-- SVG Layer for Connection Lines -->
@@ -257,6 +281,40 @@
       <path d="M16 21v-3a2 2 0 0 1 2-2h3" />
     </svg>
   </button>
+
+  <!-- Offline Overlay -->
+  <div id="offline-overlay" class="offline-overlay hidden">
+    <div class="offline-content">
+      <div class="offline-icon">📡</div>
+      <h2 class="offline-title">Tidak Ada Koneksi Internet</h2>
+      <p class="offline-message">Hubungkan ke internet untuk menggunakan MLPA</p>
+    </div>
+  </div>
+
+  <!-- Upload Error Modal -->
+  <div id="upload-error-modal" class="upload-error-modal hidden">
+    <div class="upload-error-content">
+      <h2 class="upload-error-title">Gagal Memproses Skala</h2>
+      <p class="upload-error-message" id="upload-error-message">Koneksi terputus. Periksa internet Anda.</p>
+      <div class="upload-error-actions">
+        <button id="upload-error-mock" class="upload-error-btn primary">Gunakan Data Mockup</button>
+        <button id="upload-error-close" class="upload-error-btn secondary">Tutup</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Dimension Grouping Confirmation Modal -->
+  <div id="dimension-confirm-modal" class="upload-error-modal hidden">
+    <div class="upload-error-content">
+      <h2 class="upload-error-title">Item Tidak Memiliki Dimensi</h2>
+      <p class="upload-error-message">Item anda belum dibagi dalam kategori dimensi. GPT akan mengelompokkan item ke
+        dalam kategori dimensi agar bisa diproses oleh program. Lanjutkan?</p>
+      <div class="upload-error-actions">
+        <button id="dimension-confirm-yes" class="upload-error-btn primary">Lanjutkan</button>
+        <button id="dimension-confirm-no" class="upload-error-btn secondary">Batal</button>
+      </div>
+    </div>
+  </div>
 
   <script src="api.js"></script>
   <script src="config.js"></script>
