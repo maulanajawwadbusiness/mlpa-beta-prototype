@@ -272,11 +272,22 @@ Crucial for MLPA "Core Meaning" verification.
   item_id: "1",
   origin_item_id: "1",       // Tracks lineage across branches
   text: "Saya merasa...",
-  baseline_rubric: ["Kepercayaan Diri", "Merasa", ...],  // Immutable original traits
-  current_rubric: ["Kepercayaan Diri", "Merasa", ...],   // Mutable current traits
-  dimension: "Kepercayaan Diri"
+  baseline_rubric: ["Kepercayaan Diri", "Merasa", ...],  // IMMUTABLE: from root scale, never changes
+  current_rubric: ["Kepercayaan Diri", "Merasa", ...],   // RAW traits from current sentence
+  dimension: "Kepercayaan Diri",
+  rubric_source: "gpt" | "parent" | "manual"  // Tracks rubric origin
 }
 ```
+
+**Rubric System:**
+- **`baseline_rubric`**: ALWAYS identical across all branches (copied from root scale). Never changes.
+- **`current_rubric`**: Raw psychological traits extracted from the current item's sentence.
+  - For root scale: Same as baseline
+  - For branches: GPT extracts fresh traits from adapted sentence (NOT copied from baseline)
+- **Visual Indicators**:
+  - Green outline: `baseline_rubric === current_rubric` (meaning preserved)
+  - Red outline: `baseline_rubric !== current_rubric` (meaning changed)
+  - No outline: Root scale items
 
 ### 5.3 Item Editing System
 **Philosophy:** "Calm, boring, invisible" Apple-like single-item editing with contenteditable.
@@ -433,8 +444,8 @@ baseline_rubric: [
 
 #### **GPT Scale Generation (V2):**
 **Scope:**
-- GPT generates **dimension names** and **item texts**
-- App injects: `item_id`, `origin_item_id`, `baseline_rubric`, `current_rubric`
+- GPT generates **dimension names**, **item texts**, and **current_rubric** (raw traits)
+- App injects: `item_id`, `origin_item_id`, `baseline_rubric`, `rubric_source`
 
 **Prompt Structure:**
 ```javascript
@@ -450,17 +461,26 @@ baseline_rubric: [
       "dimensions": [
         {
           "name": "...",
-          "items": [{ "text": "..." }]
+          "items": [
+            { 
+              "text": "...",
+              "current_rubric": ["Trait1", "Trait2", ...]  // RAW traits from adapted sentence
+            }
+          ]
         }
       ]
     }
+    
+    CRITICAL: Extract current_rubric as RAW traits from YOUR adapted sentence.
+    Be IGNORANT of any baseline - only analyze the sentence you created.
+    Example: "Saya berani mencoba hal baru" → ["Keberanian", "Mencoba hal baru", ...]
   `
 }
 ```
 
 **API Call:**
 - Endpoint: `/v1/chat/completions` (Chat Completions API)
-- Model: `gpt-5-mini`
+- Model: `gpt-5.2` (for sophisticated rubric extraction)
 - Response format: `{ type: 'json_object' }`
 
 **Validation Pipeline:**
@@ -469,18 +489,19 @@ baseline_rubric: [
 3. For each dimension:
    - Check `name` exists
    - Check `items` is non-empty array
-   - For each item: check `text` exists
+   - For each item: check `text` exists (current_rubric optional)
 4. Warn (don't fail) on dimension/item count mismatch
 
 **Item Expansion (`expandWithMockRubrics`):**
 ```javascript
 {
-  item_id: `${scaleId}-item-${n}`,           // App-generated
-  origin_item_id: sourceItems[i].item_id,    // Index-mapped from parent
-  text: gptItem.text,                        // GPT-generated
-  baseline_rubric: sourceItems[i].baseline_rubric,  // Copied from parent
-  current_rubric: sourceItems[i].baseline_rubric,   // Same as baseline
-  dimension: dim.name                        // GPT-generated
+  item_id: `${scaleId}-item-${n}`,                    // App-generated
+  origin_item_id: sourceItems[i].item_id,             // Index-mapped from parent
+  text: gptItem.text,                                 // GPT-generated
+  baseline_rubric: sourceItems[i].baseline_rubric,    // ALWAYS from root (immutable)
+  current_rubric: gptItem.current_rubric || baseline, // GPT's raw traits or fallback
+  dimension: dim.name,                                // GPT-generated
+  rubric_source: gptItem.current_rubric ? 'gpt' : 'parent'
 }
 ```
 
@@ -523,6 +544,26 @@ baseline_rubric: [
 - **Positioning:** Dynamic via getBoundingClientRect, not CSS-only
 - **Z-Index Strategy:** 10000 (highest layer, like notifications)
 - **Overflow Handling:** Escaped via portal, not CSS overflow fixes
+
+### 8.3 CSV Upload Validation
+- **Sanity Check:** GPT validates if uploaded CSV contains psychometric scale items
+  - Rejects: empty files, random text, broken data, less than 3 recognizable items
+  - Returns: `is_valid_scale: false` with `rejection_reason`
+- **Dimension Detection:** GPT checks if CSV has dimension column
+  - `has_dimensions: true` → uses existing dimensions
+  - `has_dimensions: false` → GPT groups items, user must confirm via modal
+- **No Hallucination Rule:** GPT must NOT invent new items, only extract what exists
+- **User Confirmation:** Modal asks user approval before allowing GPT to group dimensions
+
+### 8.4 Color Legend (Tampilan Edit)
+- **Position:** Bottom-left of flow canvas (fixed to viewport, not world)
+- **Visual Style:** Minimal - dots and text only, no background/border
+- **Animation:** Hover reveals text with left-to-right fade + slide (0.3s ease-out)
+- **Indicators:**
+  - **Green dot** (#42c472): "Rubrik cocok dengan item asli" (baseline === current)
+  - **Red dot** (#ed6666): "Rubrik tidak cocok dengan item asli" (baseline !== current)
+  - **Blue dot** (#639af1): "Mode edit" (item in edit mode)
+- **Dot Animation:** Subtle 1px translateX on hover, synchronized with text
 
 ### 8.3 Data Integrity
 - **Rubric Tracking:** Dual rubric system (baseline vs current)

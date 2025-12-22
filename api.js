@@ -12,7 +12,7 @@ const OpenAIAPI = (function () {
         baseUrl: 'https://api.openai.com/v1',
         defaultModel: 'gpt-5.2',
         supportedModels: ['gpt-5.2', 'gpt-5-mini'],
-        timeout: 15000,  // 15 seconds
+        timeout: 15000 * 4,  // 60 seconds
         maxRetries: 3
     };
 
