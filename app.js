@@ -7,32 +7,53 @@
   'use strict';
 
   // ==================== STATE ====================
+  // ============================================================================
+  // STATE OWNERSHIP (Phase 2 Contract - FROZEN)
+  // ============================================================================
+  // CATEGORY 1: UI State - Screen navigation, mode flags
+  // CATEGORY 2: Preview State - Questionnaire items, answers, progress
+  // CATEGORY 3: Canvas State - Graph of scales, positions, connections
+  //
+  // Scale Object Shape (FROZEN - see state/stateManager.js for full contract):
+  //   scale_id: string
+  //   scale_name: string
+  //   parent_scale_id: string | null
+  //   is_root: boolean
+  //   expanded: boolean
+  //   depth: number
+  //   branch_index?: number
+  //   position: { x: number, y: number }
+  //   positionLocked?: boolean
+  //   dimensions: Dimension[]
+  //
+  // FlatItem Interface (FROZEN - for preview):
+  //   item_id, origin_item_id, text, baseline_rubric, current_rubric, dimension
+  // ============================================================================
 
   const state = {
+    // === CATEGORY 1: UI State ===
     currentScreen: 1,
     totalScreens: 3,
     csvData: null,
     csvRaw: null,
     isProcessing: false,
-
-    // App state
     appActive: false,
     sidebarCollapsed: false,
     previewMode: false,
 
-    // Questionnaire state
-    items: [],
+    // === CATEGORY 2: Preview State ===
+    items: [],                   // FlatItem[] - CONTRACT: see above
     currentItemIndex: 0,
-    answers: {},
+    answers: {},                 // item_id → answer (1-5)
     isCompleted: false,
-    selectedScaleId: null,  // Currently selected scale for preview
+    selectedScaleId: null,
 
-    // Canvas state (for Tampilan Edit)
+    // === CATEGORY 3: Canvas State ===
     canvasState: {
-      scales: new Map(),           // scale_id -> Scale
-      connections: [],              // { from: scale_id, to: scale_id }
-      pan: { x: 0, y: 0 },         // Canvas offset
-      activeScaleId: 'skala-asli'  // Currently selected scale
+      scales: new Map(),         // CONTRACT: Map<string, Scale>
+      connections: [],           // Visual only, derived from parent_scale_id
+      pan: { x: 0, y: 0 },      // Canvas viewport offset
+      activeScaleId: 'skala-asli'
     }
   };
 
@@ -438,64 +459,16 @@
   }
 
   // ==================== CSV PARSING ====================
+  // Delegated to CSVIngest module (adapters/csvIngest.js)
 
   function parseCSV(text) {
-    const lines = text.trim().split(/\r?\n/);
-    if (lines.length === 0) {
-      return { headers: [], items: [], rawRowCount: 0 };
-    }
-
-    const firstLine = lines[0];
-    const delimiter = firstLine.includes(';') && !firstLine.includes(',') ? ';' : ',';
-    const headers = parseCSVLine(lines[0], delimiter);
-
-    const items = [];
-    for (let i = 1; i < lines.length; i++) {
-      const line = lines[i].trim();
-      if (!line) continue;
-
-      const values = parseCSVLine(line, delimiter);
-      const item = {};
-
-      headers.forEach((header, index) => {
-        item[header.trim() || `column_${index + 1}`] = values[index]?.trim() || '';
-      });
-
-      items.push(item);
-    }
-
-    return {
-      headers: headers.map(h => h.trim()),
-      items: items,
-      rawRowCount: items.length
-    };
+    // Delegate to pure module function
+    return window.CSVIngest.parseCSV(text);
   }
 
   function parseCSVLine(line, delimiter = ',') {
-    const result = [];
-    let current = '';
-    let inQuotes = false;
-
-    for (let i = 0; i < line.length; i++) {
-      const char = line[i];
-
-      if (char === '"') {
-        if (inQuotes && line[i + 1] === '"') {
-          current += '"';
-          i++;
-        } else {
-          inQuotes = !inQuotes;
-        }
-      } else if (char === delimiter && !inQuotes) {
-        result.push(current);
-        current = '';
-      } else {
-        current += char;
-      }
-    }
-
-    result.push(current);
-    return result;
+    // Delegate to pure module function
+    return window.CSVIngest.parseCSVLine(line, delimiter);
   }
 
   // ==================== FILE PROCESSING ====================
@@ -958,20 +931,9 @@
     elements.scaleSelectorConnections.innerHTML = '';
   }
 
+  // DELEGATED to ScaleGraph module (logic/scaleGraph.js)
   function buildScaleTree(scales) {
-    // Map of parent_scale_id -> [child_scale_ids]
-    const tree = new Map();
-
-    for (const [id, scale] of scales) {
-      if (scale.parent_scale_id) {
-        if (!tree.has(scale.parent_scale_id)) {
-          tree.set(scale.parent_scale_id, []);
-        }
-        tree.get(scale.parent_scale_id).push(id);
-      }
-    }
-
-    return tree;
+    return window.ScaleGraph.buildScaleTree(scales);
   }
 
   function selectScale(scaleId) {
@@ -985,49 +947,42 @@
 
     console.log('[MLPA] Selecting scale:', scale.scale_name);
 
-    // Update state
+    // =========================================================================
+    // PREVIEW PIPELINE (Phase 2 Contract - Explicit Flow)
+    // =========================================================================
+    // STEP 1: Update selection → STEP 2: Build flat items → STEP 3: Reset state → STEP 4: Render
+    // No hidden state coupling. Each step is explicit.
+    // =========================================================================
+
+    // STEP 1: Update selection state
     state.selectedScaleId = scaleId;
 
-    // Update button label
-    if (elements.scaleSelectorLabel) {
-      elements.scaleSelectorLabel.textContent = scale.scale_name;
-    }
-
-    // Extract items from selected scale and set for questionnaire
+    // STEP 2: Build flat item list (DELEGATED to ScaleTransform)
+    // Input: Scale object → Output: FlatItem[] (CONTRACT: see state definition)
     state.items = getScaleItems(scale);
+
+    // STEP 3: Reset questionnaire state
     state.currentItemIndex = 0;
     state.answers = {};
     state.isCompleted = false;
 
-    // Refresh questionnaire UI
+    // STEP 4: Render UI
+    if (elements.scaleSelectorLabel) {
+      elements.scaleSelectorLabel.textContent = scale.scale_name;
+    }
     elements.completion?.classList.add('hidden');
     elements.questionnaire?.classList.remove('hidden');
     updateQuestionnaireUI();
 
-    // Close the selector modal
+    // Close modal
     closeScaleSelector();
 
     console.log('[MLPA] Scale selected, items loaded:', state.items.length);
   }
 
+  // DELEGATED to ScaleTransform module (logic/scaleTransform.js)
   function getScaleItems(scale) {
-    // Flatten all items from all dimensions
-    const items = [];
-
-    if (Array.isArray(scale.dimensions)) {
-      scale.dimensions.forEach(dim => {
-        if (Array.isArray(dim.items)) {
-          dim.items.forEach(item => {
-            items.push({
-              ...item,
-              dimension: dim.name
-            });
-          });
-        }
-      });
-    }
-
-    return items;
+    return window.ScaleTransform.flattenScaleItems(scale);
   }
 
   // ==================== MOCK DATA ====================
@@ -1547,131 +1502,29 @@
       this.updateCanvasBounds();
     },
 
+    // DELEGATED to FlowBoxRenderer module (ui/renderer/flowBoxRenderer.js)
     createFlowBoxHtml(scale) {
-      let globalItemIndex = 1;
-      const dimensions = Array.isArray(scale.dimensions) ? scale.dimensions : [];
-      const dimensionsHtml = dimensions.map((dim, index) => {
-        const safeDimension = dim && typeof dim === 'object' ? dim : {};
-        const items = Array.isArray(safeDimension.items) ? safeDimension.items : [];
-        const html = this.createDimensionHtml({ ...safeDimension, items }, index + 1, globalItemIndex, scale);
-        globalItemIndex += items.length;
-        return html;
-      }).join('');
-
-      return `
-        <div class="flow-box flow-mode ${scale.expanded ? '' : 'flow-mode-collapsed'}"  
-             data-scale-id="${scale.scale_id}" 
-             style="left: ${scale.position.x}px; top: ${scale.position.y}px;">
-          <!-- Hover Tools -->
-          <div class="flow-box-tools">
-            <button class="flow-tool-btn edit-mode-btn" title="Edit Item">
-              <img src="assets/edit_icon.png" alt="Edit">
-            </button>
-            <button class="flow-tool-btn export-btn" title="Simpan sebagai CSV">
-              <img src="assets/save_icon.png" alt="Export">
-            </button>
-            ${!scale.is_root ? `
-            <button class="flow-tool-btn delete-btn" title="Hapus Skala">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="3 6 5 6 21 6"></polyline>
-                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-              </svg>
-            </button>` : ''}
-            <button class="flow-tool-btn branch-btn" title="Cabangkan ke Versi Baru">
-              <img src="assets/branch_button_icon.png" alt="Branch">
-            </button>
-          </div>
-
-          <!-- Header -->
-          <div class="flow-box-header">
-            <span class="flow-box-title">${scale.scale_name}</span>
-            <svg class="flow-box-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M6 9l6 6 6-6" />
-            </svg>
-          </div>
-
-          <!-- Content -->
-          <div class="flow-box-content">
-            ${dimensionsHtml}
-          </div>
-        </div>
-      `;
+      return window.FlowBoxRenderer.createFlowBoxHtml(scale);
     },
 
+    // DELEGATED to FlowBoxRenderer module (ui/renderer/flowBoxRenderer.js)
     createDimensionHtml(dimension, index, startItemIndex, scale) {
-      const safeDimension = dimension && typeof dimension === 'object' ? dimension : {};
-      const items = Array.isArray(safeDimension.items) ? safeDimension.items : [];
-      const itemsHtml = items.map((item, idx) => this.createItemHtml(item, startItemIndex + idx, scale)).join('');
-      const dimensionName = typeof safeDimension.name === 'string' ? safeDimension.name : '';
-
-      return `
-        <div class="dimension-box">
-          <div class="dimension-label">
-            <span class="dimension-label-line">Dimensi ${index}</span>
-            <span class="dimension-label-line">${dimensionName}</span>
-          </div>
-          <div class="dimension-items">
-            ${itemsHtml}
-          </div>
-        </div>
-      `;
+      return window.FlowBoxRenderer.createDimensionHtml(dimension, index, startItemIndex, scale);
     },
 
+    // DELEGATED to FlowBoxRenderer module (ui/renderer/flowBoxRenderer.js)
     createItemHtml(item, itemIndex, scale) {
-      const safeItem = item && typeof item === 'object' ? item : {};
-      const integrityClass = this.getIntegrityClass(safeItem, scale);
-      const rubricHtml = this.createRubricPopupHtml(safeItem);
-      const itemId = safeItem.item_id ?? '';
-      const itemText = safeItem.text ?? '';
-
-      return `
-        <div class="item-box ${integrityClass}" data-item-id="${itemId}">
-          <span class="item-text">
-            <span class="item-index">i${itemIndex}: </span>
-            <span class="item-content">${itemText}</span>
-          </span>
-          ${rubricHtml}
-        </div>
-      `;
+      return window.FlowBoxRenderer.createItemHtml(item, itemIndex, scale);
     },
 
+    // DELEGATED to FlowBoxRenderer module (ui/renderer/flowBoxRenderer.js)
     createRubricPopupHtml(item) {
-      const hasRubric = item.current_rubric && item.current_rubric.length > 0;
-      if (!hasRubric) {
-        return `
-          <div class="rubric-popup">
-            <div class="rubric-title">Rubrik (placeholder)</div>
-            <div class="rubric-list">
-              <span class="rubric-item">Akan digenerate oleh AI</span>
-            </div>
-          </div>
-        `;
-      }
-
-      const rubricItems = item.current_rubric.map(r => `<span class="rubric-item">${r}</span>`).join('');
-      return `
-        <div class="rubric-popup">
-          <div class="rubric-title">Rubrik: Sifat-Sifat Dasar di Kalimat</div>
-          <div class="rubric-list">${rubricItems}</div>
-        </div>
-      `;
+      return window.FlowBoxRenderer.createRubricPopupHtml(item);
     },
 
+    // DELEGATED to FlowBoxRenderer module (ui/renderer/flowBoxRenderer.js)
     getIntegrityClass(item, scale) {
-      // Don't show outline for root scales
-      if (scale && scale.is_root) return '';
-
-      // Compare baseline and current rubric
-      if (!item.baseline_rubric || !item.current_rubric) return '';
-      if (item.baseline_rubric.length === 0 && item.current_rubric.length === 0) return '';
-
-      // Check if arrays are identical
-      const isIdentical =
-        item.baseline_rubric.length === item.current_rubric.length &&
-        item.baseline_rubric.every((trait, i) => trait === item.current_rubric[i]);
-
-      // Green = match, Red = mismatch
-      return isIdentical ? 'integrity-stable' : 'integrity-mismatch';
+      return window.FlowBoxRenderer.getIntegrityClass(item, scale);
     },
 
     bindFlowBoxEvents() {
@@ -1962,30 +1815,11 @@
     // Deterministic child-row positioning for branched scales
     // Invariant: Position is computed from branch_index only (no DOM reads, no sibling scan)
     // Layout: Symmetric alternating around parent Y (up, down, further up, further down)
+    // DELEGATED to BranchPositioning module (layout/branchPositioning.js)
     getNextBranchPosition(sourceScaleId, branch_index) {
-      const HORIZONTAL_STEP = 550;    // Horizontal step per generation
-      const VERTICAL_GAP = 24;        // Gap between sibling scales
-      const ESTIMATED_HEIGHT = 180;   // Fixed estimated flowbox height
-      const ROW_HEIGHT = ESTIMATED_HEIGHT + VERTICAL_GAP;
-
+      // Fetch parent scale from state and delegate to pure module function
       const source = state.canvasState.scales.get(sourceScaleId);
-      if (!source) return { x: 100, y: 100, branch_index: 0, depth: 1 };
-
-      // Depth-based horizontal positioning (constant step per generation)
-      const depth = (source.depth || 0) + 1;
-      const baseX = source.position.x + HORIZONTAL_STEP;
-
-      // Symmetric alternating: layer + direction derived from branch_index
-      const layer = Math.floor(branch_index / 2) + 1;
-      const direction = 2 * (branch_index % 2) - 1;  // -1 for even (up), +1 for odd (down)
-      const baseY = source.position.y + (direction * layer * ROW_HEIGHT);
-
-      return {
-        x: baseX,
-        y: baseY,
-        branch_index: branch_index,
-        depth: depth
-      };
+      return window.BranchPositioning.getNextBranchPosition(source, branch_index);
     },
 
     // ============================================================================
@@ -2055,42 +1889,15 @@
 
     /**
      * Expand GPT items with rubrics (V2)
+     * DELEGATED to OpenAIScaleAdapter module (adapters/openAiScale.js)
      * @param {Array} gptDimensions - [{ name, items: [{ text, current_rubric? }] }]
      * @param {string} scaleId - Scale ID for namespacing
      * @param {Array} sourceDimensions - Source dimensions for origin_item_id and baseline_rubric mapping
      * @returns {Array} Full dimensions with all required fields
      */
     expandWithMockRubrics(gptDimensions, scaleId, sourceDimensions) {
-      let itemCounter = 1;
-      return gptDimensions.map((dim, dimIndex) => {
-        const sourceItems = sourceDimensions[dimIndex]?.items || [];
-
-        return {
-          name: dim.name,
-          items: dim.items.map((item, itemIndex) => {
-            const sourceItem = sourceItems[itemIndex];
-
-            // baseline_rubric: ALWAYS from source (root scale, never changes)
-            const baseline_rubric = sourceItem?.baseline_rubric || ['Mock Rubric'];
-
-            // current_rubric: GPT's raw traits from adapted sentence (or fallback to baseline)
-            // GPT should extract these fresh from the new sentence, NOT copy baseline
-            const current_rubric = item.current_rubric && item.current_rubric.length > 0
-              ? item.current_rubric  // GPT provided raw traits from adapted sentence
-              : baseline_rubric;     // Fallback if GPT didn't provide
-
-            return {
-              item_id: `${scaleId}-item-${itemCounter++}`,
-              origin_item_id: sourceItem?.item_id || 'unknown',
-              text: item.text,
-              baseline_rubric: baseline_rubric,
-              current_rubric: current_rubric,
-              dimension: dim.name,
-              rubric_source: item.current_rubric ? 'gpt' : 'parent'
-            };
-          })
-        };
-      });
+      // Delegate to pure module function
+      return window.OpenAIScaleAdapter.expandWithRubrics(gptDimensions, scaleId, sourceDimensions);
     },
 
     /**
@@ -2333,57 +2140,43 @@
 
     // ============================================================================
     // DELETE SCALE LOGIC (Cascade)
+    // DELEGATED to FlowEditorController (controllers/flowEditorController.js)
     // ============================================================================
     handleDeleteScale(scaleId) {
       if (!scaleId) return;
-      const scale = state.canvasState.scales.get(scaleId);
-      if (!scale) return;
 
-      // 1. Root Protection
-      if (scale.is_root) {
-        alert('Skala utama (Root) tidak dapat dihapus.');
+      // 1. Prepare deletion (pure logic)
+      const prep = window.FlowEditorController
+        ? window.FlowEditorController.prepareDelete(scaleId, state.canvasState.scales)
+        : { canDelete: false, error: 'controller_not_found' };
+
+      if (!prep.canDelete) {
+        if (prep.error === 'root_protected') {
+          alert('Skala utama (Root) tidak dapat dihapus.');
+        }
         return;
       }
 
-      // 2. Cascade Collection
-      // Find all descendants recursively
-      const toDelete = new Set([scaleId]);
-
-      let modified = true;
-      while (modified) {
-        modified = false;
-        // Iterate all scales to find children of any currently marked-for-deletion scale
-        for (const [sId, s] of state.canvasState.scales) {
-          if (!toDelete.has(sId) && s.parent_scale_id && toDelete.has(s.parent_scale_id)) {
-            toDelete.add(sId);
-            modified = true;
-          }
-        }
-      }
-
-      // 3. Confirmation
-      const count = toDelete.size;
+      // 2. Confirmation (UI concern - stays here)
+      const count = prep.count;
       const message = count > 1
         ? `Apakah Anda yakin ingin menghapus skala ini dan ${count - 1} turunannya?`
         : `Apakah Anda yakin ingin menghapus skala ini?`;
 
       if (!confirm(message)) return;
 
-      // 4. Execution
+      // 3. Close popup first
       this.closeBranchingPopup();
 
-      toDelete.forEach(id => {
-        state.canvasState.scales.delete(id);
-        // Reset active ID if we deleted it
-        if (state.canvasState.activeScaleId === id) {
-          state.canvasState.activeScaleId = null;
-        }
-      });
-
-      console.log(`[MLPA] Deleted ${count} scales via cascade.`);
-
-      // 5. Render (No reflow)
-      this.renderAll();
+      // 4. Execute deletion via controller
+      if (window.FlowEditorController) {
+        window.FlowEditorController.executeDelete(
+          prep.toDelete,
+          state.canvasState.scales,
+          state.canvasState,
+          () => this.renderAll()
+        );
+      }
     },
 
     exportScale(scaleId) {
@@ -2677,15 +2470,10 @@
       });
     },
 
+    // DELEGATED to ConnectionGeometry module (layout/connectionGeometry.js)
     createBezierPath(px, py, cx, cy) {
-      // Simple cubic bezier: horizontal control points
-      const dx = cx - px;
-      const c1x = px + dx * 0.4;
-      const c1y = py;
-      const c2x = cx - dx * 0.4;
-      const c2y = cy;
-
-      return `M ${px} ${py} C ${c1x} ${c1y}, ${c2x} ${c2y}, ${cx} ${cy}`;
+      // Delegate to pure module function
+      return window.ConnectionGeometry.createBezierPath(px, py, cx, cy);
     },
 
     // Debug Panel Functions
